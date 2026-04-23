@@ -3,35 +3,46 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>고등학교 진학 지망 조사 폼 (테스트)</title>
-<link href="/static/style.css?v=20260413-1" rel="stylesheet">
+<title>고교 진학 지망 조사 (QR 버전)</title>
+<link href="/static/style.css?v=20260423-qr" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/davidshimjs/qrcodejs/qrcode.min.js"></script>
 <style>
-  /* 이 페이지에만 쓰이는 고유 스타일. 공통은 style.css에 위임. */
-  .survey-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
-  .survey-tabs .chip{cursor:pointer;border:1px solid #d1d5db;background:#fff;padding:8px 14px;border-radius:999px;font-weight:700;font-size:.95rem;color:#111}
-  .survey-tabs .chip.is-active{background:#111;color:#fff;border-color:#111}
+  .qr-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+  .qr-tabs .chip{cursor:pointer;border:1px solid #d1d5db;background:#fff;padding:8px 14px;border-radius:999px;font-weight:700;font-size:.95rem;color:#111}
+  .qr-tabs .chip.is-active{background:#111;color:#fff;border-color:#111}
   .notice-warn{background:#fffaeb;color:#7c2d12;border:1px solid #fedf89;padding:12px 14px;border-radius:12px;margin:0 0 16px;font-weight:600}
+  .notice-info{background:#eff6ff;color:#1e40af;border:1px solid #bfdbfe;padding:12px 14px;border-radius:12px;margin:0 0 16px;font-weight:600}
   .notice-ok{background:#ecfdf3;color:#166534;border:1px solid #abefc6;padding:12px 14px;border-radius:12px;font-weight:600}
-  .form-grid-3{display:grid;grid-template-columns:repeat(3, minmax(0,1fr));gap:10px}
   .field{display:flex;flex-direction:column;gap:4px;margin:12px 0}
   .field label{font-size:.98rem;font-weight:700;color:#111;margin:0}
-  .error-box{color:#b42318;font-size:.95rem;margin:10px 0 0;min-height:1.2em;font-weight:600}
-  #drop-zone{border:2px dashed #d1d5db;border-radius:14px;padding:36px 20px;text-align:center;background:#fafbfc;transition:all .15s}
+  .key-chip{display:inline-block;padding:6px 12px;background:#f3f4f6;border:1px solid #d1d5db;border-radius:8px;font-family:ui-monospace,Menlo,monospace;font-size:.95rem;color:#444}
+  #drop-zone{border:2px dashed #d1d5db;border-radius:14px;padding:32px 20px;text-align:center;background:#fafbfc;transition:all .15s}
   #drop-zone.dragging{border-color:#111;background:#eef2ff}
   #drop-zone input[type=file]{display:none}
-  #drop-zone p{margin:0 0 10px}
-  .file-list{margin-top:14px;font-size:.95rem;color:#555;text-align:left}
-  .file-list div{padding:4px 0}
-  .preview-wrap{width:100%;overflow:auto;max-height:420px;margin-top:8px;border:1px solid #e5e7eb;border-radius:10px}
+  .file-log{margin-top:12px;font-size:.95rem;color:#555;text-align:left}
+  .file-log div{padding:3px 0}
+  .btn-row{display:flex;flex-wrap:wrap;gap:10px;margin-top:16px}
+  .qr-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:16px}
+  .qr-card{border:1px solid #d1d5db;border-radius:10px;padding:12px;text-align:center;background:#fff;page-break-inside:avoid;break-inside:avoid}
+  .qr-card .who{font-weight:700;font-size:.98rem;margin-bottom:6px}
+  .qr-card .meta{font-size:.85rem;color:#555;margin-bottom:8px}
+  .qr-card .qr-box{display:flex;justify-content:center}
+  .qr-card .qr-box img,.qr-card .qr-box canvas{width:150px !important;height:150px !important}
+  .qr-card .url{font-size:.72rem;color:#888;margin-top:6px;word-break:break-all}
+  .preview-wrap{width:100%;overflow:auto;max-height:360px;border:1px solid #e5e7eb;border-radius:10px;margin-top:10px}
   .preview-wrap table{width:100%;border-collapse:collapse;font-size:.92rem}
   .preview-wrap th,.preview-wrap td{border:1px solid #e5e7eb;padding:6px 8px;text-align:left;white-space:nowrap}
-  .preview-wrap th{background:#f9fafb;position:sticky;top:0;z-index:1;font-weight:700}
-  .btn-row{display:flex;flex-wrap:wrap;gap:10px;margin-top:16px}
+  .preview-wrap th{background:#f9fafb;position:sticky;top:0;font-weight:700}
+  .done-box{text-align:center;padding:40px 20px}
+  .done-box .check{font-size:64px;margin-bottom:12px}
   @media print{
-    .site-header,.survey-tabs,.btn,.notice-warn,#drop-zone{display:none !important}
+    .site-header,.qr-tabs,.btn,.notice-warn,.notice-info,.notice-ok,#drop-zone,.btn-row,.file-log{display:none !important}
     body{background:#fff}
-    .section{border:none;box-shadow:none;padding:0}
+    .section{border:none;box-shadow:none;padding:0;margin:0}
+    .qr-grid{grid-template-columns:repeat(3,1fr);gap:8px}
+    .qr-card{border:1px dashed #999}
+    .qr-card .url{display:none}
   }
 </style>
 </head>
@@ -39,101 +50,134 @@
 
 <header class="site-header">
   <div class="shell">
-    <h1>고교 진학 지망 조사</h1>
-    <p class="sub">서버에 개인정보를 저장하지 않는 폼 · 학생 제출 후 담임에게 엑셀로 전달</p>
-    <div class="survey-tabs" role="tablist">
-      <button type="button" class="chip is-active" data-view="student" role="tab" aria-selected="true">학생용 작성</button>
-      <button type="button" class="chip" data-view="teacher" role="tab" aria-selected="false">교사용 집계</button>
+    <h1>고교 진학 지망 조사 (QR 버전)</h1>
+    <p class="sub">학생은 QR만 찍어 1·2지망만 입력 · 서버엔 키와 지망만 저장(가명정보)</p>
+    <div class="qr-tabs" id="admin-tabs" role="tablist" hidden>
+      <button type="button" class="chip is-active" data-view="issue" role="tab">① 학교: QR 발급</button>
+      <button type="button" class="chip" data-view="export" role="tab">② 도교육청: 결합 내보내기</button>
     </div>
   </div>
 </header>
 
 <main class="page-main page-main--compact">
 
-  <!-- 학생용 -->
-  <section id="student-view" class="section">
-    <div class="notice-warn">
-      <b>제약 조건</b> — 본 사이트 서버에는 개인정보가 저장되지 않습니다.<br>
-      작성 후 <b>엑셀(.xlsx)</b> 파일을 다운로드해 담임 선생님께 제출해 주세요.
+  <!-- ══════════ 학생 응답 모드 (?k=... 진입) ══════════ -->
+  <section id="student-view" class="section" hidden>
+    <div class="notice-info">
+      <b>고교 진학 지망 조사</b><br>
+      이름·학번 입력 없이 <b>1·2지망만</b> 선택하면 제출됩니다. QR 하나가 곧 본인 확인입니다.
     </div>
-    <form id="survey-form" autocomplete="off" novalidate>
+    <form id="student-form" autocomplete="off" novalidate>
       <div class="field">
-        <label for="school">재학 중인 중학교</label>
-        <input id="school" name="school" type="text" required maxlength="40" placeholder="예: OO중학교">
-      </div>
-      <div class="form-grid-3">
-        <div class="field">
-          <label for="grade">학년 (기본 3학년)</label>
-          <select id="grade" name="grade" required>
-            <option value="">선택</option><option>1</option><option>2</option><option selected>3</option>
-          </select>
-        </div>
-        <div class="field">
-          <label for="classNo">반</label>
-          <input id="classNo" name="classNo" type="number" min="1" max="30" required>
-        </div>
-        <div class="field">
-          <label for="studentNo">번호</label>
-          <input id="studentNo" name="studentNo" type="number" min="1" max="50" required>
-        </div>
-      </div>
-      <div class="field">
-        <label for="name">성명</label>
-        <input id="name" name="name" type="text" required maxlength="20">
-      </div>
-      <div class="field">
-        <label for="birth">생년월일</label>
-        <input id="birth" name="birth" type="date" required>
+        <label>내 고유 코드</label>
+        <div><span class="key-chip" id="my-key"></span></div>
       </div>
       <div class="field">
         <label for="choice1">1지망 고등학교</label>
-        <input id="choice1" name="choice1" type="text" required maxlength="40">
+        <input id="choice1" name="choice1" type="text" required maxlength="40" placeholder="예: 한국고등학교">
       </div>
       <div class="field">
         <label for="choice2">2지망 고등학교</label>
-        <input id="choice2" name="choice2" type="text" required maxlength="40">
+        <input id="choice2" name="choice2" type="text" required maxlength="40" placeholder="예: 중앙고등학교">
       </div>
-      <div id="error-box" class="error-box" role="alert" aria-live="polite"></div>
+      <div id="student-error" style="color:#b42318;font-weight:600;min-height:1.2em;margin-top:8px"></div>
       <div class="btn-row">
-        <button type="button" class="btn primary" id="btn-xlsx">엑셀(.xlsx) 다운로드</button>
-        <button type="button" class="btn ghost" id="btn-print">인쇄용 보기</button>
-        <button type="button" class="btn ghost" id="btn-reset">초기화</button>
+        <button type="button" class="btn primary" id="btn-submit">제출</button>
+        <button type="button" class="btn ghost" id="btn-offline">서버 없이 엑셀로 제출</button>
       </div>
     </form>
-  </section>
-
-  <section class="section">
-    <div class="notice-ok">
-      💡 작성 중인 내용은 <b>이 기기의 브라우저</b>에만 임시 저장됩니다.
-      공용 기기라면 제출 직후 <b>초기화</b>를 눌러 지워 주세요.
+    <div id="student-done" class="done-box" hidden>
+      <div class="check">✅</div>
+      <h2 style="margin:0 0 8px">제출 완료</h2>
+      <p class="muted">담임 선생님께는 이 화면을 보여주시면 됩니다.</p>
+      <div style="margin-top:10px"><span class="key-chip" id="done-key"></span></div>
     </div>
   </section>
 
-  <!-- 교사용 -->
-  <section id="teacher-view" class="section" hidden>
+  <!-- ══════════ ① 학교 담당자: QR 발급 ══════════ -->
+  <section id="issue-view" class="section" hidden>
     <div class="notice-warn">
-      ⚠ 교사용 집계 도구입니다. 파일은 <b>선생님의 브라우저 안에서만</b> 처리되며 어디에도 전송되지 않습니다.
+      <b>학교 담당자용</b> — 이 화면의 매핑표는 <b>학교 내부에서만</b> 보관하세요.
+      매핑표가 유출되면 서버의 가명정보가 실명 정보가 됩니다.
     </div>
+
+    <div class="field">
+      <label for="issue-school">중학교명</label>
+      <input id="issue-school" type="text" maxlength="40" placeholder="예: OO중학교">
+    </div>
+
     <div id="drop-zone">
-      <p>학생들이 제출한 <b>.xlsx</b> 파일을 여기에 드래그하거나</p>
+      <p style="margin:0 0 10px">
+        학생 명단 <b>.xlsx</b>를 여기에 드래그하세요.<br>
+        <small style="color:#666">필요 컬럼: 학년 · 반 · 번호 · 성명</small>
+      </p>
       <label for="file-input" class="btn primary">파일 선택</label>
-      <input type="file" id="file-input" multiple accept=".xlsx,.xls">
-      <div class="file-list" id="file-list"></div>
+      <input type="file" id="file-input" accept=".xlsx,.xls">
+      <div class="file-log" id="file-log"></div>
     </div>
-    <div id="preview-card" hidden>
-      <h3 style="margin:18px 0 6px">집계 미리보기 (<span id="count">0</span>건)</h3>
-      <div class="preview-wrap"><table id="preview-table"></table></div>
+
+    <div id="issue-result" hidden>
       <div class="btn-row">
-        <button type="button" class="btn primary" id="btn-master">통합본 .xlsx 다운로드</button>
-        <button type="button" class="btn ghost" id="btn-clear">목록 비우기</button>
+        <button type="button" class="btn primary" id="btn-download-map">매핑표(.xlsx) 다운로드</button>
+        <button type="button" class="btn ghost" id="btn-print-qr">QR 카드 인쇄 (A4)</button>
+        <button type="button" class="btn ghost" id="btn-issue-clear">다시 시작</button>
       </div>
+      <h3 style="margin-top:18px">발급된 QR 카드 (<span id="issue-count">0</span>개)</h3>
+      <div id="qr-grid" class="qr-grid"></div>
+    </div>
+  </section>
+
+  <!-- ══════════ ② 도교육청 담당자: 결합 내보내기 ══════════ -->
+  <section id="export-view" class="section" hidden>
+    <div class="notice-warn">
+      <b>도교육청 담당자용</b> — 서버에서 받은 가명정보 + 각 학교의 매핑표를
+      <b>이 브라우저 안에서만</b> 결합합니다. 결합 결과는 로컬에만 저장됩니다.
+    </div>
+
+    <h3>STEP 1. 서버에서 응답 데이터 가져오기</h3>
+    <div class="field">
+      <label for="admin-token">관리자 토큰</label>
+      <input id="admin-token" type="password" placeholder="도교육청 발급 토큰" autocomplete="off">
+    </div>
+    <div class="btn-row">
+      <button type="button" class="btn primary" id="btn-fetch">서버 응답 불러오기</button>
+      <button type="button" class="btn ghost" id="btn-import-json">JSON 파일로 대체 입력</button>
+      <input type="file" id="json-input" accept=".json,.csv" hidden>
+    </div>
+    <div id="fetch-status" style="margin-top:8px;font-weight:600"></div>
+
+    <h3 style="margin-top:22px">STEP 2. 학교 매핑표 업로드 (여러 학교 가능)</h3>
+    <div id="map-drop-zone" style="border:2px dashed #d1d5db;border-radius:14px;padding:24px 16px;text-align:center;background:#fafbfc;transition:all .15s">
+      <p style="margin:0 0 10px">각 학교의 <b>매핑표 .xlsx</b>를 드래그하세요.</p>
+      <label for="map-input" class="btn primary">파일 선택</label>
+      <input type="file" id="map-input" multiple accept=".xlsx,.xls" hidden>
+      <div class="file-log" id="map-log"></div>
+    </div>
+
+    <h3 style="margin-top:22px">STEP 3. 결합 결과</h3>
+    <div id="merge-summary" class="notice-info" hidden></div>
+    <div class="preview-wrap" id="merge-preview-wrap" hidden>
+      <table id="merge-table"></table>
+    </div>
+    <div class="btn-row">
+      <button type="button" class="btn primary" id="btn-merge-export" disabled>통합 실명 엑셀 다운로드</button>
+      <button type="button" class="btn ghost" id="btn-export-clear">초기화</button>
     </div>
   </section>
 
 </main>
 
 <script>
-// ===== 유틸 =====
+// ════════════════════════════════════════════════════════════
+//  공통 유틸
+// ════════════════════════════════════════════════════════════
+const $ = s => document.querySelector(s);
+const $$ = s => document.querySelectorAll(s);
+
+// 서버 엔드포인트 — 실제 도교육청 API 주소로 교체
+const API_SUBMIT = '/api/survey/submit';
+const API_EXPORT = '/api/survey/export';
+
 function sanitizeCell(v){
   if(v===null||v===undefined) return '';
   const s=String(v);
@@ -141,164 +185,400 @@ function sanitizeCell(v){
   return s;
 }
 function safeFileSeg(v){ return String(v||'').replace(/[^\w가-힣]/g,'_').slice(0,30); }
-const $ = s => document.querySelector(s);
-const $$ = s => document.querySelectorAll(s);
-const SCHEMA = ['제출시각','중학교','학년','반','번호','성명','생년월일','1지망 고교','2지망 고교','확인코드'];
-
-async function shortHash(str){
-  const buf = new TextEncoder().encode(str);
-  const h = await crypto.subtle.digest('SHA-256', buf);
-  return Array.from(new Uint8Array(h)).slice(0,2).map(b=>b.toString(16).padStart(2,'0')).join('').toUpperCase();
+function nowISO(){ return new Date().toISOString(); }
+function genKey(){
+  // crypto.randomUUID() → "8-4-4-4-12" 중 앞 8-4만 사용 → 13자
+  const u = crypto.randomUUID();
+  return u.slice(0,8)+'-'+u.slice(9,13);
 }
 
-// ===== 탭 =====
-$$('.survey-tabs .chip').forEach(btn=>{
-  btn.addEventListener('click', ()=>{
-    $$('.survey-tabs .chip').forEach(b=>{
-      b.classList.remove('is-active');
-      b.setAttribute('aria-selected','false');
-    });
-    btn.classList.add('is-active');
-    btn.setAttribute('aria-selected','true');
-    const v=btn.dataset.view;
-    $('#student-view').hidden=(v!=='student');
-    $('#teacher-view').hidden=(v!=='teacher');
+// ════════════════════════════════════════════════════════════
+//  모드 분기: ?k=... 이면 학생, 아니면 관리자
+// ════════════════════════════════════════════════════════════
+const params = new URLSearchParams(location.search);
+const studentKey = (params.get('k')||'').trim();
+
+if (studentKey && /^[a-f0-9]{8}-[a-f0-9]{4}$/.test(studentKey)) {
+  initStudentMode(studentKey);
+} else {
+  initAdminMode();
+}
+
+// ════════════════════════════════════════════════════════════
+//  [학생 모드]
+// ════════════════════════════════════════════════════════════
+function initStudentMode(key){
+  $('#student-view').hidden = false;
+  $('#my-key').textContent = key;
+  $('#done-key').textContent = key;
+
+  $('#btn-submit').addEventListener('click', async ()=>{
+    const c1 = $('#choice1').value.trim();
+    const c2 = $('#choice2').value.trim();
+    const err = $('#student-error'); err.textContent = '';
+    if(!c1 || !c2){ err.textContent='1지망과 2지망을 모두 입력하세요.'; return; }
+    if(c1===c2){ err.textContent='1지망과 2지망이 같을 수 없습니다.'; return; }
+
+    $('#btn-submit').disabled = true;
+    $('#btn-submit').textContent = '제출 중...';
+
+    try {
+      const res = await fetch(API_SUBMIT, {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ key, c1, c2, ts: nowISO() })
+      });
+      if(!res.ok) throw new Error('서버 응답 ' + res.status);
+      showDone();
+    } catch(e) {
+      err.textContent = '서버 제출 실패: ' + e.message + ' — "서버 없이 엑셀로 제출"을 이용하세요.';
+      $('#btn-submit').disabled = false;
+      $('#btn-submit').textContent = '제출';
+    }
   });
-});
 
-// ===== 임시저장 =====
-const DRAFT_KEY='gojigi.draft.v1';
-function loadDraft(){
-  try{
-    const raw=localStorage.getItem(DRAFT_KEY); if(!raw) return;
-    const data=JSON.parse(raw);
-    Object.entries(data).forEach(([k,v])=>{
-      const el=$('#survey-form [name="'+k+'"]'); if(el) el.value=v;
-    });
-  }catch(e){}
-}
-function saveDraft(){
-  const f=new FormData($('#survey-form')); const obj={};
-  for(const [k,v] of f.entries()) obj[k]=v;
-  localStorage.setItem(DRAFT_KEY, JSON.stringify(obj));
-}
-$('#survey-form').addEventListener('input', saveDraft);
-loadDraft();
+  $('#btn-offline').addEventListener('click', ()=>{
+    const c1 = $('#choice1').value.trim();
+    const c2 = $('#choice2').value.trim();
+    const err = $('#student-error'); err.textContent = '';
+    if(!c1 || !c2){ err.textContent='1지망과 2지망을 모두 입력하세요.'; return; }
+    if(c1===c2){ err.textContent='1지망과 2지망이 같을 수 없습니다.'; return; }
 
-// ===== 검증 =====
-function collectAndValidate(){
-  const f=$('#survey-form'); const data={}; const errors=[];
-  ['school','grade','classNo','studentNo','name','birth','choice1','choice2'].forEach(k=>{
-    const v=(f[k].value||'').trim(); data[k]=v;
-    if(!v) errors.push(labelOf(k)+' 을(를) 입력하세요.');
+    const ts = nowISO();
+    const header = ['학번키','1지망','2지망','제출시각'];
+    const row = [key, c1, c2, ts].map(sanitizeCell);
+    const ws = XLSX.utils.aoa_to_sheet([header, row]);
+    ws['!cols'] = header.map(()=>({wch:16}));
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, '지망');
+    XLSX.writeFile(wb, `지망_${key}.xlsx`);
+    showDone();
   });
-  if(data.name && data.name.length<2) errors.push('성명은 2자 이상이어야 합니다.');
-  if(data.choice1 && data.choice1===data.choice2) errors.push('1지망과 2지망이 같을 수 없습니다.');
-  return {data, errors};
-}
-function labelOf(k){
-  return {school:'중학교',grade:'학년',classNo:'반',studentNo:'번호',name:'성명',birth:'생년월일',choice1:'1지망',choice2:'2지망'}[k];
-}
 
-// ===== 학생 엑셀 내보내기 =====
-$('#btn-xlsx').addEventListener('click', async ()=>{
-  const {data, errors}=collectAndValidate();
-  const box=$('#error-box'); box.textContent='';
-  if(errors.length){ box.innerHTML=errors.join('<br>'); return; }
-  const ts=new Date().toISOString().slice(0,19).replace('T',' ');
-  const payload=[ts,data.school,data.grade,data.classNo,data.studentNo,data.name,data.birth,data.choice1,data.choice2].map(sanitizeCell);
-  const code=await shortHash(payload.join('|'));
-  payload.push(code);
-  const ws=XLSX.utils.aoa_to_sheet([SCHEMA, payload]);
-  ws['!cols']=SCHEMA.map(()=>({wch:14}));
-  const wb=XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, '고교지망');
-  const fname = `고교지망_${safeFileSeg(data.school)}_${safeFileSeg(data.grade)}-${safeFileSeg(data.classNo)}-${safeFileSeg(data.studentNo)}_${safeFileSeg(data.name)}.xlsx`;
-  XLSX.writeFile(wb, fname);
-});
-
-$('#btn-print').addEventListener('click', ()=>window.print());
-$('#btn-reset').addEventListener('click', ()=>{
-  if(!confirm('입력한 내용을 모두 지울까요? (브라우저 임시저장도 삭제됩니다)')) return;
-  $('#survey-form').reset(); localStorage.removeItem(DRAFT_KEY); $('#error-box').textContent='';
-});
-
-// ===== 교사 집계 =====
-const dropZone=$('#drop-zone'); const fileInput=$('#file-input'); const fileList=$('#file-list');
-let aggregated=[];
-
-['dragenter','dragover'].forEach(ev=>{
-  dropZone.addEventListener(ev, e=>{ e.preventDefault(); dropZone.classList.add('dragging'); });
-});
-['dragleave','drop'].forEach(ev=>{
-  dropZone.addEventListener(ev, e=>{ e.preventDefault(); dropZone.classList.remove('dragging'); });
-});
-dropZone.addEventListener('drop', e=>handleFiles(e.dataTransfer.files));
-fileInput.addEventListener('change', e=>handleFiles(e.target.files));
-
-async function handleFiles(files){
-  const arr=Array.from(files).filter(f=>/\.xlsx?$/i.test(f.name));
-  for(const file of arr){
-    try{
-      const buf=await file.arrayBuffer();
-      const wb=XLSX.read(buf,{type:'array'});
-      const ws=wb.Sheets[wb.SheetNames[0]];
-      const rows=XLSX.utils.sheet_to_json(ws,{header:1, defval:''});
-      if(!rows[0] || rows[0].join('|')!==SCHEMA.join('|')){
-        appendFileLog(file.name,'⚠ 스키마 불일치 — 건너뜀'); continue;
-      }
-      for(let i=1;i<rows.length;i++){
-        const r=rows[i]; if(!r[5]) continue;
-        const payload=r.slice(0,9).map(sanitizeCell);
-        const expected=await shortHash(payload.join('|'));
-        const ok=(String(r[9]||'').toUpperCase()===expected);
-        aggregated.push({row:r, ok, src:file.name});
-      }
-      appendFileLog(file.name,'✓ 반영됨');
-    }catch(err){ appendFileLog(file.name,'✗ 오류: '+err.message); }
+  function showDone(){
+    $('#student-form').hidden = true;
+    $('#student-done').hidden = false;
   }
-  renderPreview();
 }
-function appendFileLog(name,msg){
-  const div=document.createElement('div');
-  div.textContent=`• ${name} — ${msg}`;
-  fileList.appendChild(div);
-}
-function renderPreview(){
-  if(!aggregated.length) return;
-  $('#preview-card').hidden=false; $('#count').textContent=aggregated.length;
-  const tbl=$('#preview-table'); tbl.innerHTML='';
-  const thead=document.createElement('thead'); const thr=document.createElement('tr');
-  [...SCHEMA,'무결성','출처파일'].forEach(h=>{
-    const th=document.createElement('th'); th.textContent=h; thr.appendChild(th);
+
+// ════════════════════════════════════════════════════════════
+//  [관리자 모드] 공통 초기화 & 탭 전환
+// ════════════════════════════════════════════════════════════
+function initAdminMode(){
+  $('#admin-tabs').hidden = false;
+  $('#issue-view').hidden = false;
+
+  $$('#admin-tabs .chip').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      $$('#admin-tabs .chip').forEach(b=>b.classList.remove('is-active'));
+      btn.classList.add('is-active');
+      const v = btn.dataset.view;
+      $('#issue-view').hidden = (v!=='issue');
+      $('#export-view').hidden = (v!=='export');
+    });
   });
+
+  initIssueTab();
+  initExportTab();
+}
+
+// ════════════════════════════════════════════════════════════
+//  [관리자] ① QR 발급 탭
+// ════════════════════════════════════════════════════════════
+let issuedList = []; // [{key, grade, classNo, studentNo, name}]
+
+function initIssueTab(){
+  const dz = $('#drop-zone');
+  const fi = $('#file-input');
+  const log = $('#file-log');
+
+  ['dragenter','dragover'].forEach(ev=>{
+    dz.addEventListener(ev, e=>{ e.preventDefault(); dz.classList.add('dragging'); });
+  });
+  ['dragleave','drop'].forEach(ev=>{
+    dz.addEventListener(ev, e=>{ e.preventDefault(); dz.classList.remove('dragging'); });
+  });
+  dz.addEventListener('drop', e=>handleRoster(e.dataTransfer.files[0]));
+  fi.addEventListener('change', e=>handleRoster(e.target.files[0]));
+
+  async function handleRoster(file){
+    if(!file) return;
+    log.innerHTML = '';
+    const school = $('#issue-school').value.trim();
+    if(!school){ addLog('✗ 먼저 "중학교명"을 입력하세요.'); return; }
+
+    try {
+      const buf = await file.arrayBuffer();
+      const wb = XLSX.read(buf,{type:'array'});
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, {defval:''});
+      if(!rows.length){ addLog('✗ 빈 파일입니다.'); return; }
+
+      // 컬럼 탐지 (유연하게)
+      const sample = rows[0];
+      const keys = Object.keys(sample);
+      const col = {
+        grade: keys.find(k=>/학년/.test(k)),
+        classNo: keys.find(k=>/^반$|학급|반번호/.test(k)),
+        studentNo: keys.find(k=>/번호|출석번호/.test(k)),
+        name: keys.find(k=>/성명|이름/.test(k))
+      };
+      if(!col.grade||!col.classNo||!col.studentNo||!col.name){
+        addLog('✗ 필요 컬럼(학년/반/번호/성명)을 찾지 못했습니다. 발견된 컬럼: '+keys.join(', '));
+        return;
+      }
+
+      issuedList = rows.map(r=>({
+        key: genKey(),
+        school,
+        grade: String(r[col.grade]).trim(),
+        classNo: String(r[col.classNo]).trim(),
+        studentNo: String(r[col.studentNo]).trim(),
+        name: String(r[col.name]).trim()
+      })).filter(x=>x.name);
+
+      addLog(`✓ ${issuedList.length}명 발급 완료`);
+      renderIssueResult();
+    } catch(err){
+      addLog('✗ 오류: ' + err.message);
+    }
+  }
+  function addLog(msg){
+    const d = document.createElement('div');
+    d.textContent = '• ' + msg;
+    log.appendChild(d);
+  }
+
+  function renderIssueResult(){
+    $('#issue-result').hidden = false;
+    $('#issue-count').textContent = issuedList.length;
+    const grid = $('#qr-grid');
+    grid.innerHTML = '';
+    const base = location.origin + location.pathname;
+    issuedList.forEach(stu=>{
+      const url = `${base}?k=${stu.key}`;
+      const card = document.createElement('div');
+      card.className = 'qr-card';
+      const who = document.createElement('div');
+      who.className = 'who';
+      who.textContent = stu.name;
+      const meta = document.createElement('div');
+      meta.className = 'meta';
+      meta.textContent = `${stu.school} ${stu.grade}학년 ${stu.classNo}반 ${stu.studentNo}번`;
+      const qrBox = document.createElement('div');
+      qrBox.className = 'qr-box';
+      const qrDiv = document.createElement('div');
+      qrBox.appendChild(qrDiv);
+      const keyTxt = document.createElement('div');
+      keyTxt.className = 'url';
+      keyTxt.textContent = stu.key;
+      card.appendChild(who); card.appendChild(meta); card.appendChild(qrBox); card.appendChild(keyTxt);
+      grid.appendChild(card);
+      new QRCode(qrDiv, { text:url, width:150, height:150, correctLevel: QRCode.CorrectLevel.M });
+    });
+  }
+
+  $('#btn-download-map').addEventListener('click', ()=>{
+    if(!issuedList.length) return;
+    const school = issuedList[0].school;
+    const header = ['학번키','중학교','학년','반','번호','성명'];
+    const body = issuedList.map(s=>[s.key, s.school, s.grade, s.classNo, s.studentNo, s.name].map(sanitizeCell));
+    const ws = XLSX.utils.aoa_to_sheet([header, ...body]);
+    ws['!cols'] = header.map(()=>({wch:16}));
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, '매핑표');
+    const fname = `매핑표_${safeFileSeg(school)}_${new Date().toISOString().slice(0,10)}.xlsx`;
+    XLSX.writeFile(wb, fname);
+    alert('매핑표가 다운로드되었습니다.\n학교 내부에서만 보관하시고, 외부(도교육청 포함)로 원본을 보내지 마세요.');
+  });
+
+  $('#btn-print-qr').addEventListener('click', ()=>window.print());
+
+  $('#btn-issue-clear').addEventListener('click', ()=>{
+    if(!confirm('발급 내역을 모두 지울까요? 매핑표를 먼저 다운로드했는지 확인하세요.')) return;
+    issuedList = [];
+    $('#qr-grid').innerHTML = '';
+    $('#issue-result').hidden = true;
+    $('#file-log').innerHTML = '';
+    $('#file-input').value = '';
+  });
+}
+
+// ════════════════════════════════════════════════════════════
+//  [관리자] ② 결합 내보내기 탭
+// ════════════════════════════════════════════════════════════
+let serverRows = []; // [{key, c1, c2, ts}]
+let mappingRows = []; // [{key, school, grade, classNo, studentNo, name}]
+
+function initExportTab(){
+  // STEP 1: 서버 가져오기
+  $('#btn-fetch').addEventListener('click', async ()=>{
+    const token = $('#admin-token').value.trim();
+    const status = $('#fetch-status');
+    if(!token){ status.textContent='✗ 토큰을 입력하세요.'; status.style.color='#b42318'; return; }
+    status.textContent='불러오는 중...'; status.style.color='#1e40af';
+    try {
+      const res = await fetch(API_EXPORT, { headers:{'X-Admin-Token': token} });
+      if(!res.ok) throw new Error('서버 응답 '+res.status);
+      const data = await res.json();
+      serverRows = Array.isArray(data) ? data : (data.rows||[]);
+      status.textContent = `✓ ${serverRows.length}건 불러옴`;
+      status.style.color='#166534';
+      tryMerge();
+    } catch(e){
+      status.textContent = '✗ 실패: '+e.message+' — JSON 파일로 대체 입력하세요.';
+      status.style.color='#b42318';
+    }
+  });
+
+  // 대체 입력 (서버 없이 테스트 가능)
+  $('#btn-import-json').addEventListener('click', ()=>$('#json-input').click());
+  $('#json-input').addEventListener('change', async e=>{
+    const file = e.target.files[0]; if(!file) return;
+    try {
+      const txt = await file.text();
+      let data;
+      if(/\.csv$/i.test(file.name)){
+        const wb = XLSX.read(txt, {type:'string'});
+        data = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+      } else {
+        data = JSON.parse(txt);
+      }
+      serverRows = (Array.isArray(data)?data:data.rows||[]).map(r=>({
+        key: r.key||r.학번키, c1: r.c1||r['1지망'], c2: r.c2||r['2지망'], ts: r.ts||r.제출시각||''
+      }));
+      $('#fetch-status').textContent = `✓ 파일에서 ${serverRows.length}건 불러옴`;
+      $('#fetch-status').style.color='#166534';
+      tryMerge();
+    } catch(err){
+      $('#fetch-status').textContent = '✗ 파일 파싱 실패: '+err.message;
+      $('#fetch-status').style.color='#b42318';
+    }
+  });
+
+  // STEP 2: 매핑표 업로드
+  const mdz = $('#map-drop-zone');
+  const mi = $('#map-input');
+  const mlog = $('#map-log');
+
+  ['dragenter','dragover'].forEach(ev=>{
+    mdz.addEventListener(ev, e=>{ e.preventDefault(); mdz.style.borderColor='#111'; mdz.style.background='#eef2ff'; });
+  });
+  ['dragleave','drop'].forEach(ev=>{
+    mdz.addEventListener(ev, e=>{ e.preventDefault(); mdz.style.borderColor='#d1d5db'; mdz.style.background='#fafbfc'; });
+  });
+  mdz.addEventListener('drop', e=>handleMappings(e.dataTransfer.files));
+  $('#map-drop-zone label').addEventListener('click', e=>{ e.preventDefault(); mi.click(); });
+  mi.addEventListener('change', e=>handleMappings(e.target.files));
+
+  async function handleMappings(files){
+    const arr = Array.from(files).filter(f=>/\.xlsx?$/i.test(f.name));
+    for(const file of arr){
+      try {
+        const buf = await file.arrayBuffer();
+        const wb = XLSX.read(buf,{type:'array'});
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(ws, {defval:''});
+        let added = 0;
+        rows.forEach(r=>{
+          const key = r['학번키']||r.key;
+          if(!key) return;
+          mappingRows.push({
+            key, school: r['중학교']||'', grade: r['학년']||'', classNo: r['반']||'',
+            studentNo: r['번호']||'', name: r['성명']||''
+          });
+          added++;
+        });
+        addMLog(`✓ ${file.name} — ${added}명 반영`);
+      } catch(err){
+        addMLog(`✗ ${file.name} — ${err.message}`);
+      }
+    }
+    tryMerge();
+  }
+  function addMLog(msg){
+    const d = document.createElement('div'); d.textContent = '• '+msg; mlog.appendChild(d);
+  }
+
+  $('#btn-export-clear').addEventListener('click', ()=>{
+    if(!confirm('모든 데이터를 초기화할까요?')) return;
+    serverRows = []; mappingRows = [];
+    mlog.innerHTML = ''; $('#fetch-status').textContent='';
+    $('#merge-summary').hidden = true;
+    $('#merge-preview-wrap').hidden = true;
+    $('#btn-merge-export').disabled = true;
+    $('#admin-token').value = '';
+    mi.value = ''; $('#json-input').value = '';
+  });
+}
+
+// 결합 실행 & 미리보기
+function tryMerge(){
+  if(!serverRows.length || !mappingRows.length){
+    $('#merge-summary').hidden = true;
+    $('#merge-preview-wrap').hidden = true;
+    $('#btn-merge-export').disabled = true;
+    return;
+  }
+  const mapByKey = new Map();
+  mappingRows.forEach(m=>{ mapByKey.set(m.key, m); });
+  const merged = [];
+  const orphan = []; // 매핑 없는 응답
+  serverRows.forEach(r=>{
+    const m = mapByKey.get(r.key);
+    if(m){
+      merged.push({ ...m, c1: r.c1, c2: r.c2, ts: r.ts });
+    } else {
+      orphan.push(r);
+    }
+  });
+  const respondedKeys = new Set(serverRows.map(r=>r.key));
+  const notResponded = mappingRows.filter(m=>!respondedKeys.has(m.key));
+
+  $('#merge-summary').hidden = false;
+  $('#merge-summary').innerHTML =
+    `결합 ${merged.length}건 · 미응답 ${notResponded.length}명 · 매핑없는 응답 ${orphan.length}건`;
+
+  const tbl = $('#merge-table'); tbl.innerHTML = '';
+  const header = ['중학교','학년','반','번호','성명','1지망','2지망','제출시각','학번키'];
+  const thead = document.createElement('thead'); const thr = document.createElement('tr');
+  header.forEach(h=>{ const th=document.createElement('th'); th.textContent=h; thr.appendChild(th); });
   thead.appendChild(thr); tbl.appendChild(thead);
-  const tbody=document.createElement('tbody');
-  aggregated.forEach(rec=>{
-    const tr=document.createElement('tr');
-    rec.row.forEach(cell=>{ const td=document.createElement('td'); td.textContent=cell; tr.appendChild(td); });
-    const td1=document.createElement('td');
-    td1.textContent=rec.ok?'✓':'⚠ 변조의심';
-    td1.style.color=rec.ok?'#067647':'#b42318';
-    tr.appendChild(td1);
-    const td2=document.createElement('td'); td2.textContent=rec.src; tr.appendChild(td2);
+  const tbody = document.createElement('tbody');
+  merged.slice(0,200).forEach(r=>{
+    const tr = document.createElement('tr');
+    [r.school,r.grade,r.classNo,r.studentNo,r.name,r.c1,r.c2,r.ts,r.key].forEach(v=>{
+      const td = document.createElement('td'); td.textContent = v; tr.appendChild(td);
+    });
     tbody.appendChild(tr);
   });
   tbl.appendChild(tbody);
+  $('#merge-preview-wrap').hidden = false;
+  $('#btn-merge-export').disabled = false;
+
+  $('#btn-merge-export').onclick = ()=>{
+    const header = ['중학교','학년','반','번호','성명','1지망','2지망','제출시각','학번키'];
+    const body = merged.map(r=>[r.school,r.grade,r.classNo,r.studentNo,r.name,r.c1,r.c2,r.ts,r.key].map(sanitizeCell));
+    const wb = XLSX.utils.book_new();
+    const ws1 = XLSX.utils.aoa_to_sheet([header, ...body]);
+    ws1['!cols'] = header.map(()=>({wch:14}));
+    XLSX.utils.book_append_sheet(wb, ws1, '결합결과');
+
+    if(notResponded.length){
+      const h2 = ['중학교','학년','반','번호','성명','학번키'];
+      const b2 = notResponded.map(r=>[r.school,r.grade,r.classNo,r.studentNo,r.name,r.key].map(sanitizeCell));
+      const ws2 = XLSX.utils.aoa_to_sheet([h2, ...b2]);
+      XLSX.utils.book_append_sheet(wb, ws2, '미응답명단');
+    }
+    if(orphan.length){
+      const h3 = ['학번키','1지망','2지망','제출시각'];
+      const b3 = orphan.map(r=>[r.key,r.c1,r.c2,r.ts].map(sanitizeCell));
+      const ws3 = XLSX.utils.aoa_to_sheet([h3, ...b3]);
+      XLSX.utils.book_append_sheet(wb, ws3, '매핑없음');
+    }
+    XLSX.writeFile(wb, `진학지망_통합_${new Date().toISOString().slice(0,10)}.xlsx`);
+  };
 }
-$('#btn-master').addEventListener('click', ()=>{
-  if(!aggregated.length) return;
-  const header=[...SCHEMA,'무결성','출처파일'];
-  const body=aggregated.map(rec=>[...rec.row, rec.ok?'OK':'TAMPERED', rec.src]);
-  const ws=XLSX.utils.aoa_to_sheet([header, ...body]);
-  ws['!cols']=header.map(()=>({wch:14}));
-  const wb=XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, '통합본');
-  XLSX.writeFile(wb, `고교지망_통합_${new Date().toISOString().slice(0,10)}.xlsx`);
-});
-$('#btn-clear').addEventListener('click', ()=>{
-  aggregated=[]; fileList.innerHTML=''; $('#preview-table').innerHTML=''; $('#preview-card').hidden=true;
-});
 </script>
 </body>
 </html>
