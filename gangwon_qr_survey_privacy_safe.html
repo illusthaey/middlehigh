@@ -1,0 +1,1224 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>고교 진학 지망 조사 (QR 기반)</title>
+<link href="/static/style.css?v=20260423-qr-ui" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/davidshimjs/qrcodejs/qrcode.min.js"></script>
+<style>
+  :root{
+    --border:#d0d5dd;
+    --border-soft:#e4e7ec;
+    --text:#101828;
+    --muted:#667085;
+    --bg:#f8fafc;
+    --card:#ffffff;
+    --primary:#111827;
+    --primary-soft:#eef2ff;
+    --warn-bg:#fffaeb;
+    --warn-text:#7a2e0b;
+    --info-bg:#eff6ff;
+    --info-text:#1d4ed8;
+    --ok-bg:#ecfdf3;
+    --ok-text:#166534;
+    --danger:#b42318;
+    --shadow:0 10px 30px rgba(16,24,40,.06);
+  }
+  *{box-sizing:border-box}
+  body.survey-page{margin:0;background:linear-gradient(180deg,#f8fafc 0%,#f3f6fb 100%);color:var(--text)}
+  .shell{max-width:1160px;margin:0 auto;padding:0 20px}
+  .site-header{padding:28px 0 18px;border-bottom:1px solid #e5e7eb;background:rgba(255,255,255,.82);backdrop-filter:blur(10px);position:sticky;top:0;z-index:20}
+  .site-header h1{margin:4px 0 8px;font-size:clamp(1.55rem,3vw,2.2rem);line-height:1.15}
+  .site-header .eyebrow{display:inline-flex;align-items:center;gap:8px;background:#eef4ff;color:#1d4ed8;border:1px solid #c7d7fe;padding:6px 12px;border-radius:999px;font-weight:800;font-size:.84rem;letter-spacing:.02em}
+  .site-header .sub{margin:0;color:var(--muted);font-size:1rem}
+  .page-main{max-width:1160px;margin:0 auto;padding:28px 20px 60px}
+  .page-main--compact{max-width:1160px}
+  .section{background:var(--card);border:1px solid var(--border-soft);border-radius:22px;box-shadow:var(--shadow);padding:24px;margin:0 0 20px}
+  .muted{color:var(--muted)}
+  .btn-row{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}
+  .btn{appearance:none;border:1px solid var(--border);background:#fff;color:var(--text);padding:12px 16px;border-radius:12px;font-weight:800;cursor:pointer;transition:all .18s;font-size:.96rem}
+  .btn:hover{transform:translateY(-1px);box-shadow:0 6px 16px rgba(16,24,40,.08)}
+  .btn.primary{background:var(--primary);border-color:var(--primary);color:#fff}
+  .btn.ghost{background:#fff}
+  .btn[disabled]{opacity:.55;cursor:not-allowed;transform:none;box-shadow:none}
+  .field{display:flex;flex-direction:column;gap:6px;margin:14px 0}
+  .field label{font-size:.96rem;font-weight:800;color:var(--text);margin:0}
+  .field small{color:var(--muted)}
+  .field input[type="text"],
+  .field input[type="password"],
+  .field select,
+  .field input[type="search"]{
+    width:100%;min-height:46px;border:1px solid var(--border);border-radius:12px;padding:10px 14px;
+    font-size:1rem;background:#fff;color:var(--text);outline:none;transition:border-color .15s, box-shadow .15s;
+  }
+  .field input:focus,.field select:focus{border-color:#98a2b3;box-shadow:0 0 0 4px rgba(17,24,39,.07)}
+  .notice-warn,.notice-info,.notice-ok{padding:14px 16px;border-radius:14px;margin:0 0 18px;font-weight:700;border:1px solid transparent}
+  .notice-warn{background:var(--warn-bg);color:var(--warn-text);border-color:#fedf89}
+  .notice-info{background:var(--info-bg);color:var(--info-text);border-color:#bfdbfe}
+  .notice-ok{background:var(--ok-bg);color:var(--ok-text);border-color:#abefc6}
+  .qr-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+  .qr-tabs .chip{cursor:pointer;border:1px solid var(--border);background:#fff;padding:9px 15px;border-radius:999px;font-weight:800;font-size:.95rem;color:#111827}
+  .qr-tabs .chip.is-active{background:#111827;color:#fff;border-color:#111827}
+  .key-chip{display:inline-block;padding:8px 12px;background:#f2f4f7;border:1px solid #d0d5dd;border-radius:10px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.95rem;color:#344054;font-weight:700}
+  .hero-badge{display:inline-flex;align-items:center;gap:8px;background:#111827;color:#fff;border-radius:999px;padding:8px 12px;font-size:.84rem;font-weight:800;letter-spacing:.01em}
+  .student-hero h2{margin:12px 0 8px;font-size:clamp(1.45rem,2.4vw,2rem)}
+  .student-hero p{margin:0;color:var(--muted);font-size:1rem;line-height:1.6}
+  .student-layout{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(280px,.8fr);gap:18px;margin-top:20px}
+  .card{border:1px solid var(--border-soft);border-radius:18px;background:#fff;padding:18px}
+  .card h3{margin:0 0 10px;font-size:1.08rem}
+  .card p{margin:0;color:var(--muted);line-height:1.55}
+  .step-row{display:flex;gap:12px;flex-wrap:wrap;margin-top:18px}
+  .step-item{display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border:1px solid var(--border-soft);border-radius:14px;background:#fff;min-width:180px;flex:1}
+  .step-index{width:28px;height:28px;border-radius:50%;background:#111827;color:#fff;display:flex;align-items:center;justify-content:center;font-size:.85rem;font-weight:800;flex:none}
+  .step-copy strong{display:block;margin-bottom:2px;font-size:.94rem}
+  .step-copy span{font-size:.88rem;color:var(--muted)}
+  .privacy-points{display:grid;gap:10px;margin-top:14px}
+  .privacy-item{display:flex;gap:12px;padding:12px 14px;border:1px solid var(--border-soft);border-radius:14px;background:#fafbfc}
+  .privacy-icon{width:32px;height:32px;border-radius:10px;background:#eef2ff;display:flex;align-items:center;justify-content:center;font-size:1rem;flex:none}
+  .privacy-copy strong{display:block;margin-bottom:3px}
+  .privacy-copy span{color:var(--muted);font-size:.92rem;line-height:1.45}
+  .survey-form-card{background:linear-gradient(180deg,#ffffff 0%,#fbfdff 100%)}
+  .school-picker{display:grid;grid-template-columns:1fr 2fr;gap:10px}
+  .school-custom{margin-top:8px}
+  .school-custom[hidden]{display:none !important}
+  .summary-box{margin-top:18px;padding:16px;border-radius:16px;border:1px solid #dbe2ea;background:#f8fafc}
+  .summary-box h4{margin:0 0 10px;font-size:.95rem}
+  .summary-list{display:grid;gap:10px}
+  .summary-list .row{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:10px 0;border-bottom:1px dashed #dde3ea}
+  .summary-list .row:last-child{border-bottom:none;padding-bottom:0}
+  .summary-list span{color:var(--muted);font-size:.92rem}
+  .summary-list strong{text-align:right;font-size:.96rem;line-height:1.4}
+  .help-note{display:flex;gap:10px;align-items:flex-start;margin-top:12px;color:var(--muted);font-size:.9rem;line-height:1.45}
+  .help-note .dot{width:8px;height:8px;border-radius:50%;background:#98a2b3;margin-top:6px;flex:none}
+  #student-error{color:var(--danger);font-weight:800;min-height:1.2em;margin-top:10px}
+  .done-box{text-align:center;padding:34px 20px}
+  .done-box .check{font-size:64px;margin-bottom:12px}
+  .done-box h2{margin:0 0 8px;font-size:1.5rem}
+  .receipt-card{margin:18px auto 0;max-width:460px;padding:18px;border:1px solid #d0d5dd;border-radius:18px;background:#f8fafc}
+  .receipt-card .label{color:var(--muted);font-size:.9rem;margin-bottom:8px}
+  .metric-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:18px}
+  .metric-card{border:1px solid var(--border-soft);border-radius:18px;padding:16px;background:#fff}
+  .metric-label{font-size:.9rem;color:var(--muted);font-weight:800;margin-bottom:8px}
+  .metric-value{font-size:1.9rem;font-weight:900;letter-spacing:-.03em}
+  .metric-sub{margin-top:6px;font-size:.85rem;color:var(--muted)}
+  .office-top{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,.8fr);gap:16px;align-items:start}
+  .office-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:18px}
+  .card-head{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:10px}
+  .card-head h3{margin:0}
+  .pill{display:inline-flex;align-items:center;padding:6px 10px;border-radius:999px;background:#f2f4f7;color:#344054;font-size:.82rem;font-weight:800;border:1px solid #d0d5dd}
+  .preview-wrap{width:100%;overflow:auto;max-height:380px;border:1px solid #e4e7ec;border-radius:14px;background:#fff}
+  .preview-wrap table{width:100%;border-collapse:collapse;font-size:.92rem}
+  .preview-wrap th,.preview-wrap td{border-bottom:1px solid #eef2f7;padding:10px 12px;text-align:left;white-space:nowrap;vertical-align:top}
+  .preview-wrap th{background:#f8fafc;position:sticky;top:0;font-weight:900;z-index:1}
+  .preview-wrap tbody tr:hover{background:#f9fafb}
+  .toolbar{display:flex;flex-wrap:wrap;gap:10px;margin:14px 0 12px}
+  .toolbar .field{margin:0;flex:1 1 260px}
+  .toolbar .field--compact{flex:0 1 220px}
+  .bar-list{display:grid;gap:10px;margin-top:8px}
+  .bar-item{display:grid;grid-template-columns:minmax(88px,110px) 1fr auto;gap:10px;align-items:center}
+  .bar-label{font-size:.9rem;font-weight:800;color:#344054}
+  .bar-track{height:14px;border-radius:999px;background:#edf2f7;overflow:hidden;border:1px solid #e4e7ec}
+  .bar-fill{height:100%;background:linear-gradient(90deg,#1f2937 0%,#475467 100%)}
+  .bar-value{font-size:.9rem;color:#344054;font-weight:800}
+  .empty-state{padding:22px;border:1px dashed #d0d5dd;border-radius:16px;background:#fafbfc;color:var(--muted);text-align:center}
+  #drop-zone,
+  #file-input,
+  #map-input,
+  #json-input{font-size:inherit}
+  #drop-zone{border:2px dashed #d0d5dd;border-radius:18px;padding:32px 20px;text-align:center;background:#fafbfc;transition:all .15s}
+  #drop-zone.dragging{border-color:#111827;background:#eef2ff}
+  #drop-zone input[type=file]{display:none}
+  .file-log{margin-top:12px;font-size:.95rem;color:#475467;text-align:left}
+  .file-log div{padding:4px 0}
+  .qr-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:16px}
+  .qr-card{border:1px solid #d0d5dd;border-radius:12px;padding:12px;text-align:center;background:#fff;page-break-inside:avoid;break-inside:avoid}
+  .qr-card .who{font-weight:800;font-size:.98rem;margin-bottom:6px}
+  .qr-card .meta{font-size:.85rem;color:#667085;margin-bottom:8px}
+  .qr-card .qr-box{display:flex;justify-content:center}
+  .qr-card .qr-box img,.qr-card .qr-box canvas{width:150px !important;height:150px !important}
+  .qr-card .url{font-size:.72rem;color:#667085;margin-top:6px;word-break:break-all}
+  .compact-note{font-size:.88rem;color:var(--muted);line-height:1.45}
+  .status-line{margin-top:10px;font-weight:800}
+  .subtle{font-size:.86rem;color:var(--muted)}
+  .tag-danger{display:inline-flex;padding:4px 8px;border-radius:999px;background:#fef3f2;color:#b42318;border:1px solid #fecdca;font-size:.78rem;font-weight:800}
+  .tag-ok{display:inline-flex;padding:4px 8px;border-radius:999px;background:#ecfdf3;color:#166534;border:1px solid #abefc6;font-size:.78rem;font-weight:800}
+  @media (max-width:980px){
+    .student-layout,.office-top,.office-grid,.metric-grid{grid-template-columns:1fr 1fr}
+  }
+  @media (max-width:760px){
+    .student-layout,.office-top,.office-grid,.metric-grid{grid-template-columns:1fr}
+    .school-picker{grid-template-columns:1fr}
+    .site-header{position:static}
+    .page-main{padding-top:18px}
+    .section{padding:18px}
+    .bar-item{grid-template-columns:1fr}
+    .bar-label{margin-bottom:-2px}
+  }
+  @media print{
+    .site-header,.qr-tabs,.btn,.notice-warn,.notice-info,.notice-ok,#drop-zone,.btn-row,.file-log,.toolbar{display:none !important}
+    body{background:#fff}
+    .section,.card{border:none;box-shadow:none;padding:0;margin:0;background:#fff}
+    .qr-grid{grid-template-columns:repeat(3,1fr);gap:8px}
+    .qr-card{border:1px dashed #98a2b3}
+    .qr-card .url{display:none}
+  }
+</style>
+</head>
+<body class="survey-page">
+
+<header class="site-header">
+  <div class="shell">
+    <div class="eyebrow">강원도교육청 검토용 시안</div>
+    <h1>고교 진학 지망 조사 (QR 기반)</h1>
+    <p class="sub" id="header-sub">학생은 이름 없이 제출하고, 도교육청은 가명 응답만 집계하도록 구성한 화면입니다.</p>
+    <div class="qr-tabs" id="admin-tabs" role="tablist" hidden>
+      <button type="button" class="chip is-active" data-view="issue" role="tab">① 학교: QR 발급</button>
+      <button type="button" class="chip" data-view="office" role="tab">② 도교육청: 가명 응답 집계</button>
+    </div>
+  </div>
+</header>
+
+<main class="page-main page-main--compact">
+
+  <!-- ══════════ 학생 응답 모드 (?k=... 진입) ══════════ -->
+  <section id="student-view" class="section" hidden>
+    <div class="student-hero">
+      <div class="hero-badge">학생용 제출 화면</div>
+      <h2>고등학교 1·2지망을 제출하세요</h2>
+      <p>이 화면은 이름, 연락처, 학번을 입력받지 않습니다. 제출 시 서버에는 관리 코드와 지망 정보만 저장됩니다.</p>
+      <div class="step-row">
+        <div class="step-item">
+          <div class="step-index">1</div>
+          <div class="step-copy"><strong>지망 선택</strong><span>1지망과 2지망을 선택합니다.</span></div>
+        </div>
+        <div class="step-item">
+          <div class="step-index">2</div>
+          <div class="step-copy"><strong>제출</strong><span>QR에 연결된 개인 코드로 제출됩니다.</span></div>
+        </div>
+        <div class="step-item">
+          <div class="step-index">3</div>
+          <div class="step-copy"><strong>완료 확인</strong><span>접수 코드를 담임 선생님께 보여주세요.</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="student-layout">
+      <div class="card survey-form-card">
+        <div class="notice-info" style="margin-bottom:14px">
+          <b>개인정보 최소화 안내</b><br>
+          이름·학번 입력 없이 <b>1·2지망만</b> 제출합니다. QR 하나가 곧 본인 확인 수단입니다.
+        </div>
+
+        <form id="student-form" autocomplete="off" novalidate>
+          <div class="field">
+            <label>내 관리 코드</label>
+            <div><span class="key-chip" id="my-key"></span></div>
+            <small>학교에서 배부한 QR에 연결된 코드입니다.</small>
+          </div>
+
+          <div class="field">
+            <label>1지망 고등학교</label>
+            <div class="school-picker">
+              <select id="region1" data-target="choice1"><option value="">시/군 선택</option></select>
+              <select id="choice1"><option value="">먼저 시/군을 선택</option></select>
+            </div>
+            <input class="school-custom" id="choice1-custom" type="text" maxlength="60" placeholder="학교명을 직접 입력하세요" hidden>
+          </div>
+
+          <div class="field">
+            <label>2지망 고등학교</label>
+            <div class="school-picker">
+              <select id="region2" data-target="choice2"><option value="">시/군 선택</option></select>
+              <select id="choice2"><option value="">먼저 시/군을 선택</option></select>
+            </div>
+            <input class="school-custom" id="choice2-custom" type="text" maxlength="60" placeholder="학교명을 직접 입력하세요" hidden>
+          </div>
+
+          <div id="student-error"></div>
+
+          <div class="btn-row">
+            <button type="button" class="btn primary" id="btn-submit">제출</button>
+            <button type="button" class="btn ghost" id="btn-offline">오프라인 제출 파일 저장</button>
+          </div>
+          <div class="help-note">
+            <span class="dot"></span>
+            <span>제출 후 수정이 필요하면 학교 담당 선생님께 알려주세요. 서버 장애 시에는 오프라인 제출 파일 저장 기능으로 임시 제출할 수 있습니다.</span>
+          </div>
+        </form>
+
+        <div id="student-done" class="done-box" hidden>
+          <div class="check">✅</div>
+          <h2 id="done-title">제출이 완료되었습니다</h2>
+          <p class="muted" id="done-desc">아래 접수 코드를 담임 선생님께 보여주면 됩니다.</p>
+          <div class="receipt-card">
+            <div class="label">접수 코드</div>
+            <div><span class="key-chip" id="done-key"></span></div>
+            <div class="subtle" style="margin-top:10px" id="done-note">서버에는 접수 코드와 지망 정보만 저장됩니다.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>제출 전 확인</h3>
+        <p>학생 화면은 최대한 단순하게 만들되, 제출 전에 선택 결과를 한 번 더 확인할 수 있도록 구성했습니다.</p>
+
+        <div class="summary-box">
+          <h4>선택 요약</h4>
+          <div class="summary-list">
+            <div class="row">
+              <span>1지망</span>
+              <strong id="sum-choice1">미선택</strong>
+            </div>
+            <div class="row">
+              <span>2지망</span>
+              <strong id="sum-choice2">미선택</strong>
+            </div>
+            <div class="row">
+              <span>코드 상태</span>
+              <strong id="sum-key-state">QR 코드 인식 완료</strong>
+            </div>
+          </div>
+        </div>
+
+        <div class="privacy-points">
+          <div class="privacy-item">
+            <div class="privacy-icon">🔒</div>
+            <div class="privacy-copy">
+              <strong>이름 입력 없음</strong>
+              <span>학생 이름, 학번, 연락처를 묻지 않습니다.</span>
+            </div>
+          </div>
+          <div class="privacy-item">
+            <div class="privacy-icon">🧾</div>
+            <div class="privacy-copy">
+              <strong>응답만 저장</strong>
+              <span>서버에는 관리 코드와 1·2지망, 제출 시각만 저장되도록 전제했습니다.</span>
+            </div>
+          </div>
+          <div class="privacy-item">
+            <div class="privacy-icon">🏫</div>
+            <div class="privacy-copy">
+              <strong>학교가 배포·확인</strong>
+              <span>학생과 코드의 연결은 학교 내부에서만 관리하는 구조를 가정했습니다.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════ ① 학교 담당자: QR 발급 ══════════ -->
+  <section id="issue-view" class="section" hidden>
+    <div class="notice-warn">
+      <b>학교 담당자용</b> — 이 화면의 매핑표는 <b>학교 내부에서만</b> 보관하세요.
+      매핑표가 유출되면 서버의 가명 응답이 실명 정보와 결합될 수 있습니다.
+    </div>
+
+    <div class="field">
+      <label for="issue-school">중학교명</label>
+      <input id="issue-school" type="text" maxlength="60" placeholder="예: OO중학교">
+    </div>
+
+    <div class="card" style="margin-bottom:16px">
+      <h3>운영 흐름</h3>
+      <p>학교는 학생 명단으로 QR을 발급하고, 학생에게 배부한 뒤, 학생-코드 매핑표는 학교 내부에만 보관합니다. 도교육청 화면에는 이 매핑표를 올리지 않습니다.</p>
+    </div>
+
+    <div id="drop-zone">
+      <p style="margin:0 0 10px">
+        학생 명단 <b>.xlsx</b>를 여기에 드래그하세요.<br>
+        <small style="color:#667085">필요 컬럼: 학년 · 반 · 번호 · 성명</small>
+      </p>
+      <label for="file-input" class="btn primary">파일 선택</label>
+      <input type="file" id="file-input" accept=".xlsx,.xls">
+      <div class="file-log" id="file-log"></div>
+    </div>
+
+    <div id="issue-result" hidden>
+      <div class="btn-row">
+        <button type="button" class="btn primary" id="btn-download-map">매핑표(.xlsx) 다운로드</button>
+        <button type="button" class="btn ghost" id="btn-print-qr">QR 카드 인쇄 (A4)</button>
+        <button type="button" class="btn ghost" id="btn-issue-clear">다시 시작</button>
+      </div>
+      <h3 style="margin-top:18px">발급된 QR 카드 (<span id="issue-count">0</span>개)</h3>
+      <div id="qr-grid" class="qr-grid"></div>
+    </div>
+  </section>
+
+  <!-- ══════════ ② 도교육청 담당자: 가명 응답 집계 ══════════ -->
+  <section id="office-view" class="section" hidden>
+    <div class="notice-warn">
+      <b>도교육청 담당자용</b> — 이 화면은 <b>실명 결합 기능을 제공하지 않습니다.</b>
+      서버에서 받은 가명 응답을 브라우저에서 집계·다운로드만 하도록 바꿨습니다.
+    </div>
+
+    <div class="office-top">
+      <div class="card">
+        <div class="card-head">
+          <h3>1. 서버에서 가명 응답 가져오기</h3>
+          <span class="pill">실명 정보 없음</span>
+        </div>
+        <div class="field">
+          <label for="admin-token">관리자 토큰</label>
+          <input id="admin-token" type="password" placeholder="도교육청 발급 토큰" autocomplete="off">
+          <small>API는 가명 응답만 내려주도록 설계해야 합니다. 예: key, 1지망, 2지망, 제출시각. 학교별 응답률이 필요하면 실명 대신 발급 학교코드나 배치 ID만 추가 저장하면 됩니다.</small>
+        </div>
+        <div class="btn-row">
+          <button type="button" class="btn primary" id="btn-fetch">서버 응답 불러오기</button>
+          <button type="button" class="btn ghost" id="btn-import-json">JSON/CSV 파일로 대체 입력</button>
+          <input type="file" id="json-input" accept=".json,.csv" hidden>
+        </div>
+        <div id="fetch-status" class="status-line"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h3>2. 집계 파일 저장</h3>
+          <span class="pill">가명 원본 + 집계표</span>
+        </div>
+        <p>다운로드 파일에는 가명 응답 원본, 1·2지망 학교별 집계, 지역별 1지망 분포, 일자별 제출 추이, 검토 필요 응답 목록이 포함됩니다.</p>
+        <div class="btn-row">
+          <button type="button" class="btn primary" id="btn-office-export" disabled>가명 응답/집계 엑셀 다운로드</button>
+          <button type="button" class="btn ghost" id="btn-office-clear">초기화</button>
+        </div>
+        <div class="compact-note" style="margin-top:10px">중앙에서는 학생 실명 확인이 아니라 전체 진학 희망 현황 파악에만 사용하도록 설계한 화면입니다.</div>
+      </div>
+    </div>
+
+    <div id="office-dashboard" hidden>
+      <div class="metric-grid">
+        <div class="metric-card">
+          <div class="metric-label">가져온 원본 행 수</div>
+          <div class="metric-value" id="metric-raw">0</div>
+          <div class="metric-sub">서버 또는 파일 원본 기준</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">최신 응답 수</div>
+          <div class="metric-value" id="metric-canonical">0</div>
+          <div class="metric-sub">동일 코드 중 최신 1건만 반영</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">유효 응답 수</div>
+          <div class="metric-value" id="metric-valid">0</div>
+          <div class="metric-sub">1·2지망 모두 있고 서로 다름</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">검토 필요 응답</div>
+          <div class="metric-value" id="metric-anomaly">0</div>
+          <div class="metric-sub">미입력·중복 지망 등</div>
+        </div>
+      </div>
+
+      <div class="office-grid">
+        <div class="card">
+          <div class="card-head">
+            <h3>1지망 상위 학교</h3>
+            <span class="pill" id="top-school-pill">상위 10개</span>
+          </div>
+          <div class="preview-wrap"><table id="top-school-table"></table></div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h3>2지망 상위 학교</h3>
+            <span class="pill">상위 10개</span>
+          </div>
+          <div class="preview-wrap"><table id="second-school-table"></table></div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h3>지역별 1지망 분포</h3>
+            <span class="pill">학교명 기준 자동 매핑</span>
+          </div>
+          <div class="preview-wrap"><table id="region-table"></table></div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h3>일자별 제출 추이</h3>
+            <span class="pill" id="latest-update-pill">최근 제출 -</span>
+          </div>
+          <div id="date-bars" class="bar-list"></div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:18px">
+        <div class="card-head">
+          <h3>검토가 필요한 응답</h3>
+          <span id="anomaly-pill" class="pill">0건</span>
+        </div>
+        <div class="preview-wrap"><table id="anomaly-table"></table></div>
+      </div>
+
+      <div class="card" style="margin-top:18px">
+        <div class="card-head">
+          <h3>가명 응답 미리보기</h3>
+          <span class="pill">최신 응답 기준</span>
+        </div>
+        <div class="toolbar">
+          <div class="field">
+            <label for="office-search">학교명 또는 관리 코드 검색</label>
+            <input id="office-search" type="search" placeholder="예: 강릉고등학교 / ab12cd34">
+          </div>
+          <div class="field field--compact">
+            <label for="office-filter">상태 필터</label>
+            <select id="office-filter">
+              <option value="all">전체</option>
+              <option value="valid">유효 응답만</option>
+              <option value="anomaly">검토 필요만</option>
+            </select>
+          </div>
+        </div>
+        <div class="preview-wrap" id="office-preview-wrap"><table id="office-preview-table"></table></div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<script>
+// ════════════════════════════════════════════════════════════
+//  강원도 고등학교 목록 (사용자가 제공한 기존 목록 활용)
+// ════════════════════════════════════════════════════════════
+const HIGH_SCHOOLS_BY_REGION = {
+  "강릉시": ["강릉고등학교","강릉명륜고등학교","강릉문성고등학교","강릉여자고등학교","강릉정보공업고등학교","강릉제일고등학교","강릉중앙고등학교","강원예술고등학교","강일여자고등학교","경포고등학교","주문진고등학교"],
+  "고성군": ["거진고등학교","고성고등학교","대진고등학교","동광산업과학고등학교"],
+  "동해시": ["동해광희고등학교","동해삼육고등학교","동해상업고등학교","묵호고등학교","북평고등학교","북평여자고등학교"],
+  "삼척시": ["가곡고등학교","도계고등학교","도계전산정보고등학교","삼일고등학교","삼척고등학교","삼척여자고등학교","원덕고등학교"],
+  "속초시": ["설악고등학교","속초고등학교","속초여자고등학교"],
+  "양구군": ["강원외국어고등학교","양구고등학교","양구여자고등학교"],
+  "양양군": ["양양고등학교"],
+  "영월군": ["마차고등학교","상동고등학교","석정여자고등학교","영월고등학교","주천고등학교","한국소방마이스터고등학교"],
+  "원주시": ["강원과학고등학교","대성고등학교","문막고등학교","미래고등학교","북원여자고등학교","상지여자고등학교","섬강고등학교","영서고등학교","원주고등학교","원주금융회계고등학교","원주삼육고등학교","원주여자고등학교","원주의료고등학교","육민관고등학교","진광고등학교","치악고등학교"],
+  "인제군": ["기린고등학교","신남고등학교","원통고등학교","인제고등학교"],
+  "정선군": ["고한고등학교","사북고등학교","여량고등학교","임계고등학교","정선고등학교","정선정보공업고등학교","함백고등학교"],
+  "철원군": ["김화고등학교","신철원고등학교","철원고등학교","철원여자고등학교"],
+  "춘천시": ["강원고등학교","강원대학교사범대학부설고등학교","강원애니고등학교","강원체육고등학교","봉의고등학교","성수고등학교","성수여자고등학교","유봉여자고등학교","전인고등학교","춘천고등학교","춘천기계공업고등학교","춘천여자고등학교","춘천한샘고등학교"],
+  "태백시": ["장성여자고등학교","철암고등학교","한국항공고등학교","황지고등학교","황지정보산업고등학교"],
+  "평창군": ["대화고등학교","봉평고등학교","상지대관령고등학교","진부고등학교","평창고등학교"],
+  "홍천군": ["강원생활과학고등학교","내면고등학교","서석고등학교","팔렬고등학교","홍천고등학교","홍천농업고등학교","홍천여자고등학교"],
+  "화천군": ["간동고등학교","사내고등학교","화천고등학교","화천정산고등학교"],
+  "횡성군": ["갑천고등학교","둔내고등학교","민족사관고등학교","안흥고등학교","현천고등학교","횡성고등학교","횡성여자고등학교"]
+};
+const CUSTOM_VALUE = '__custom__';
+const SCHOOL_TO_REGION = Object.entries(HIGH_SCHOOLS_BY_REGION).reduce((acc,[region,schools])=>{
+  schools.forEach(name=>{ acc[name] = region; });
+  return acc;
+}, {});
+
+// ════════════════════════════════════════════════════════════
+//  공통 유틸
+// ════════════════════════════════════════════════════════════
+const $ = s => document.querySelector(s);
+const $$ = s => document.querySelectorAll(s);
+const API_SUBMIT = '/api/survey/submit';
+const API_EXPORT = '/api/survey/export';
+
+function sanitizeCell(v){
+  if(v===null || v===undefined) return '';
+  const s = String(v);
+  if(/^[=+\-@\t\r]/.test(s)) return "'" + s;
+  return s;
+}
+function safeFileSeg(v){ return String(v||'').replace(/[^\w가-힣]/g,'_').slice(0,40); }
+function nowISO(){ return new Date().toISOString(); }
+function genKey(){
+  const u = crypto.randomUUID();
+  return u.slice(0,8) + '-' + u.slice(9,13);
+}
+function escapeHtml(s){
+  return String(s||'').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+}
+function parseDateSafe(v){
+  const d = new Date(v);
+  return isNaN(d.getTime()) ? null : d;
+}
+function fmtDateTime(v){
+  const d = parseDateSafe(v);
+  if(!d) return v || '-';
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,'0');
+  const day = String(d.getDate()).padStart(2,'0');
+  const hh = String(d.getHours()).padStart(2,'0');
+  const mm = String(d.getMinutes()).padStart(2,'0');
+  return `${y}-${m}-${day} ${hh}:${mm}`;
+}
+function fmtDateOnly(v){
+  const d = parseDateSafe(v);
+  if(!d) return v || '-';
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,'0');
+  const day = String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
+function compareDateDesc(a,b){
+  const ta = parseDateSafe(a)?.getTime() ?? -Infinity;
+  const tb = parseDateSafe(b)?.getTime() ?? -Infinity;
+  return tb - ta;
+}
+function maskKey(key){
+  const s = String(key||'');
+  if(s.length < 6) return s;
+  return `${s.slice(0,4)}•••${s.slice(-3)}`;
+}
+function getReason(row){
+  const reasons = [];
+  if(!row.c1) reasons.push('1지망 없음');
+  if(!row.c2) reasons.push('2지망 없음');
+  if(row.c1 && row.c2 && row.c1 === row.c2) reasons.push('1·2지망 동일');
+  if(!parseDateSafe(row.ts)) reasons.push('제출시각 형식 확인 필요');
+  return reasons.join(', ') || '검토 필요';
+}
+function isValidResponse(row){
+  return !!(row.c1 && row.c2 && row.c1 !== row.c2);
+}
+function regionOfSchool(school){
+  return SCHOOL_TO_REGION[school] || '직접입력/기타';
+}
+function normalizeChoiceName(v){
+  return String(v||'').trim();
+}
+function ensureArrayRows(data){
+  if(Array.isArray(data)) return data;
+  if(data && Array.isArray(data.rows)) return data.rows;
+  return [];
+}
+function renderTable(tableEl, headers, rows, emptyMessage='표시할 데이터가 없습니다.'){
+  const tbl = typeof tableEl === 'string' ? $(tableEl) : tableEl;
+  tbl.innerHTML = '';
+  const thead = document.createElement('thead');
+  const thr = document.createElement('tr');
+  headers.forEach(h=>{
+    const th = document.createElement('th');
+    th.textContent = h;
+    thr.appendChild(th);
+  });
+  thead.appendChild(thr);
+  tbl.appendChild(thead);
+
+  const tbody = document.createElement('tbody');
+  if(!rows.length){
+    const tr = document.createElement('tr');
+    const td = document.createElement('td');
+    td.colSpan = headers.length;
+    td.textContent = emptyMessage;
+    td.style.color = '#667085';
+    tr.appendChild(td);
+    tbody.appendChild(tr);
+  } else {
+    rows.forEach(row=>{
+      const tr = document.createElement('tr');
+      row.forEach(cell=>{
+        const td = document.createElement('td');
+        if(cell && typeof cell === 'object' && cell.html !== undefined) td.innerHTML = cell.html;
+        else td.textContent = cell;
+        tr.appendChild(td);
+      });
+      tbody.appendChild(tr);
+    });
+  }
+  tbl.appendChild(tbody);
+}
+function buildCountRows(rows, field){
+  const counts = new Map();
+  rows.forEach(r=>{
+    const key = normalizeChoiceName(r[field]);
+    if(!key) return;
+    counts.set(key, (counts.get(key)||0) + 1);
+  });
+  return Array.from(counts.entries())
+    .sort((a,b)=> b[1]-a[1] || a[0].localeCompare(b[0], 'ko'))
+    .map(([name,count], idx)=>({ rank: idx+1, name, count, share: rows.length ? ((count/rows.length)*100).toFixed(1) + '%' : '0.0%', region: regionOfSchool(name) }));
+}
+function buildRegionRows(rows, field){
+  const counts = new Map();
+  rows.forEach(r=>{
+    const school = normalizeChoiceName(r[field]);
+    if(!school) return;
+    const region = regionOfSchool(school);
+    counts.set(region, (counts.get(region)||0) + 1);
+  });
+  return Array.from(counts.entries())
+    .sort((a,b)=> b[1]-a[1] || a[0].localeCompare(b[0], 'ko'))
+    .map(([region,count])=>({ region, count, share: rows.length ? ((count/rows.length)*100).toFixed(1) + '%' : '0.0%' }));
+}
+function buildDateRows(rows){
+  const counts = new Map();
+  rows.forEach(r=>{
+    const bucket = fmtDateOnly(r.ts);
+    if(!bucket || bucket === '-') return;
+    counts.set(bucket, (counts.get(bucket)||0) + 1);
+  });
+  return Array.from(counts.entries())
+    .sort((a,b)=> a[0].localeCompare(b[0]))
+    .map(([date,count])=>({ date, count }));
+}
+function renderBars(containerSel, rows){
+  const box = $(containerSel);
+  box.innerHTML = '';
+  if(!rows.length){
+    box.innerHTML = '<div class="empty-state">표시할 제출 이력이 없습니다.</div>';
+    return;
+  }
+  const max = Math.max(...rows.map(r=>r.count), 1);
+  rows.forEach(r=>{
+    const item = document.createElement('div');
+    item.className = 'bar-item';
+    item.innerHTML = `
+      <div class="bar-label">${escapeHtml(r.date)}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${Math.max(8, (r.count/max)*100)}%"></div></div>
+      <div class="bar-value">${r.count}건</div>
+    `;
+    box.appendChild(item);
+  });
+}
+function canonicalizeRows(rawRows){
+  const latestByKey = new Map();
+  rawRows.forEach((r, idx)=>{
+    const row = { ...r, _rowIndex: idx };
+    const prev = latestByKey.get(row.key);
+    if(!prev){ latestByKey.set(row.key, row); return; }
+    const prevT = parseDateSafe(prev.ts)?.getTime();
+    const curT = parseDateSafe(row.ts)?.getTime();
+    const takeCurrent = (curT ?? -Infinity) >= (prevT ?? -Infinity) || (!prev.ts && !!row.ts) || (!isFinite(prevT) && isFinite(curT));
+    if(takeCurrent) latestByKey.set(row.key, row);
+  });
+  return Array.from(latestByKey.values()).sort((a,b)=>compareDateDesc(a.ts,b.ts));
+}
+function normalizeServerRows(data){
+  return ensureArrayRows(data)
+    .map((r, idx)=>({
+      key: String(r.key || r.학번키 || r.token || '').trim(),
+      c1: normalizeChoiceName(r.c1 || r['1지망'] || r.choice1 || ''),
+      c2: normalizeChoiceName(r.c2 || r['2지망'] || r.choice2 || ''),
+      ts: String(r.ts || r.제출시각 || r.submittedAt || r.created_at || '').trim(),
+      _idx: idx
+    }))
+    .filter(r => r.key);
+}
+
+// ════════════════════════════════════════════════════════════
+//  모드 분기
+// ════════════════════════════════════════════════════════════
+const params = new URLSearchParams(location.search);
+const studentKey = (params.get('k') || '').trim();
+
+if(studentKey && /^[a-f0-9]{8}-[a-f0-9]{4}$/i.test(studentKey)){
+  initStudentMode(studentKey.toLowerCase());
+} else {
+  initAdminMode();
+}
+
+// ════════════════════════════════════════════════════════════
+//  학교 선택 UI 초기화
+// ════════════════════════════════════════════════════════════
+function initSchoolPicker(regionSelId, schoolSelId, customInputId, onChange){
+  const regionSel = $('#' + regionSelId);
+  const schoolSel = $('#' + schoolSelId);
+  const custom = $('#' + customInputId);
+
+  Object.keys(HIGH_SCHOOLS_BY_REGION).forEach(r=>{
+    const opt = document.createElement('option');
+    opt.value = r; opt.textContent = r;
+    regionSel.appendChild(opt);
+  });
+  const etcOpt = document.createElement('option');
+  etcOpt.value = CUSTOM_VALUE; etcOpt.textContent = '기타(직접 입력)';
+  regionSel.appendChild(etcOpt);
+
+  regionSel.addEventListener('change', ()=>{
+    const r = regionSel.value;
+    schoolSel.innerHTML = '';
+    if(!r){
+      schoolSel.innerHTML = '<option value="">먼저 시/군을 선택</option>';
+      schoolSel.disabled = false;
+      custom.hidden = true; custom.value = '';
+      onChange?.();
+      return;
+    }
+    if(r === CUSTOM_VALUE){
+      schoolSel.innerHTML = `<option value="${CUSTOM_VALUE}" selected>직접 입력</option>`;
+      schoolSel.disabled = true;
+      custom.hidden = false;
+      custom.focus();
+      onChange?.();
+      return;
+    }
+    schoolSel.disabled = false;
+    custom.hidden = true; custom.value = '';
+    const opt0 = document.createElement('option');
+    opt0.value = ''; opt0.textContent = '학교 선택';
+    schoolSel.appendChild(opt0);
+    HIGH_SCHOOLS_BY_REGION[r].forEach(n=>{
+      const o = document.createElement('option');
+      o.value = n; o.textContent = n;
+      schoolSel.appendChild(o);
+    });
+    const etc = document.createElement('option');
+    etc.value = CUSTOM_VALUE; etc.textContent = '기타(직접 입력)';
+    schoolSel.appendChild(etc);
+    onChange?.();
+  });
+
+  schoolSel.addEventListener('change', ()=>{
+    if(schoolSel.value === CUSTOM_VALUE){
+      custom.hidden = false; custom.focus();
+    } else {
+      custom.hidden = true; custom.value = '';
+    }
+    onChange?.();
+  });
+  custom.addEventListener('input', ()=> onChange?.());
+}
+function getPickedSchool(regionSelId, schoolSelId, customInputId){
+  const regionSel = $('#' + regionSelId);
+  const schoolSel = $('#' + schoolSelId);
+  const custom = $('#' + customInputId);
+  if(regionSel.value === CUSTOM_VALUE || schoolSel.value === CUSTOM_VALUE){
+    return (custom.value || '').trim();
+  }
+  return (schoolSel.value || '').trim();
+}
+
+// ════════════════════════════════════════════════════════════
+//  [학생 모드]
+// ════════════════════════════════════════════════════════════
+function initStudentMode(key){
+  $('#student-view').hidden = false;
+  $('#header-sub').textContent = '학생은 QR에 연결된 코드로 1·2지망만 제출합니다.';
+  $('#my-key').textContent = key;
+  $('#done-key').textContent = key;
+  $('#sum-key-state').textContent = 'QR 코드 인식 완료';
+
+  const refreshSummary = ()=>{
+    const c1 = getPickedSchool('region1','choice1','choice1-custom');
+    const c2 = getPickedSchool('region2','choice2','choice2-custom');
+    $('#sum-choice1').textContent = c1 || '미선택';
+    $('#sum-choice2').textContent = c2 || '미선택';
+  };
+
+  initSchoolPicker('region1','choice1','choice1-custom', refreshSummary);
+  initSchoolPicker('region2','choice2','choice2-custom', refreshSummary);
+  refreshSummary();
+
+  function validate(){
+    const c1 = getPickedSchool('region1','choice1','choice1-custom');
+    const c2 = getPickedSchool('region2','choice2','choice2-custom');
+    const err = $('#student-error');
+    err.textContent = '';
+    if(!c1 || !c2){ err.textContent = '1지망과 2지망을 모두 선택하세요.'; return null; }
+    if(c1 === c2){ err.textContent = '1지망과 2지망은 서로 달라야 합니다.'; return null; }
+    return { c1, c2 };
+  }
+
+  $('#btn-submit').addEventListener('click', async ()=>{
+    const v = validate();
+    if(!v) return;
+    $('#btn-submit').disabled = true;
+    $('#btn-submit').textContent = '제출 중...';
+    try {
+      const res = await fetch(API_SUBMIT, {
+        method: 'POST',
+        headers: { 'Content-Type':'application/json' },
+        body: JSON.stringify({ key, c1: v.c1, c2: v.c2, ts: nowISO() })
+      });
+      if(!res.ok){
+        let msg = '서버 응답 ' + res.status;
+        if(res.status === 409) msg = '이미 제출된 코드입니다.';
+        throw new Error(msg);
+      }
+      showDone('server');
+    } catch(e){
+      $('#student-error').textContent = '서버 제출 실패: ' + e.message + ' — 오프라인 제출 파일 저장을 이용하세요.';
+      $('#btn-submit').disabled = false;
+      $('#btn-submit').textContent = '제출';
+    }
+  });
+
+  $('#btn-offline').addEventListener('click', ()=>{
+    const v = validate();
+    if(!v) return;
+    const ts = nowISO();
+    const header = ['학번키','1지망','2지망','제출시각'];
+    const row = [key, v.c1, v.c2, ts].map(sanitizeCell);
+    const ws = XLSX.utils.aoa_to_sheet([header, row]);
+    ws['!cols'] = header.map(()=>({wch:18}));
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, '지망');
+    XLSX.writeFile(wb, `지망_${key}.xlsx`);
+    showDone('offline');
+  });
+
+  function showDone(mode='server'){
+    $('#student-form').hidden = true;
+    $('#student-done').hidden = false;
+    if(mode === 'offline'){
+      $('#done-title').textContent = '오프라인 제출 파일이 저장되었습니다';
+      $('#done-desc').textContent = '저장한 파일을 학교 담당 선생님께 전달하세요. 서버 제출은 아직 완료되지 않았습니다.';
+      $('#done-note').textContent = '파일에는 접수 코드와 지망 정보만 저장됩니다.';
+    } else {
+      $('#done-title').textContent = '제출이 완료되었습니다';
+      $('#done-desc').textContent = '아래 접수 코드를 담임 선생님께 보여주면 됩니다.';
+      $('#done-note').textContent = '서버에는 접수 코드와 지망 정보만 저장됩니다.';
+    }
+  }
+}
+
+// ════════════════════════════════════════════════════════════
+//  [관리자 모드]
+// ════════════════════════════════════════════════════════════
+function initAdminMode(){
+  $('#admin-tabs').hidden = false;
+  $('#issue-view').hidden = false;
+  $('#office-view').hidden = true;
+  $$('#admin-tabs .chip').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      $$('#admin-tabs .chip').forEach(b=>b.classList.remove('is-active'));
+      btn.classList.add('is-active');
+      const v = btn.dataset.view;
+      $('#issue-view').hidden = (v !== 'issue');
+      $('#office-view').hidden = (v !== 'office');
+      $('#header-sub').textContent = v === 'office'
+        ? '도교육청 화면은 가명 응답 집계만 제공하고 실명 결합은 하지 않도록 바꿨습니다.'
+        : '학교는 학생 명단으로 QR을 발급하고 매핑표는 학교 내부에만 보관합니다.';
+    });
+  });
+  initIssueTab();
+  initOfficeTab();
+}
+
+// ════════════════════════════════════════════════════════════
+//  [관리자] ① QR 발급 탭
+// ════════════════════════════════════════════════════════════
+let issuedList = [];
+
+function initIssueTab(){
+  const dz = $('#drop-zone');
+  const fi = $('#file-input');
+  const log = $('#file-log');
+
+  ['dragenter','dragover'].forEach(ev=>{
+    dz.addEventListener(ev, e=>{ e.preventDefault(); dz.classList.add('dragging'); });
+  });
+  ['dragleave','drop'].forEach(ev=>{
+    dz.addEventListener(ev, e=>{ e.preventDefault(); dz.classList.remove('dragging'); });
+  });
+  dz.addEventListener('drop', e=>handleRoster(e.dataTransfer.files[0]));
+  fi.addEventListener('change', e=>handleRoster(e.target.files[0]));
+
+  async function handleRoster(file){
+    if(!file) return;
+    log.innerHTML = '';
+    const school = $('#issue-school').value.trim();
+    if(!school){ addLog('✗ 먼저 "중학교명"을 입력하세요.'); return; }
+    try {
+      const buf = await file.arrayBuffer();
+      const wb = XLSX.read(buf, {type:'array'});
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, {defval:''});
+      if(!rows.length){ addLog('✗ 빈 파일입니다.'); return; }
+      const keys = Object.keys(rows[0]);
+      const col = {
+        grade: keys.find(k=>/학년/.test(k)),
+        classNo: keys.find(k=>/^반$|학급|반번호/.test(k)),
+        studentNo: keys.find(k=>/번호|출석번호/.test(k)),
+        name: keys.find(k=>/성명|이름/.test(k))
+      };
+      if(!col.grade || !col.classNo || !col.studentNo || !col.name){
+        addLog('✗ 필요 컬럼(학년/반/번호/성명)을 찾지 못했습니다. 발견된 컬럼: ' + keys.join(', '));
+        return;
+      }
+      issuedList = rows.map(r=>({
+        key: genKey(),
+        school,
+        grade: String(r[col.grade]).trim(),
+        classNo: String(r[col.classNo]).trim(),
+        studentNo: String(r[col.studentNo]).trim(),
+        name: String(r[col.name]).trim()
+      })).filter(x=>x.name);
+      addLog(`✓ ${issuedList.length}명 발급 완료`);
+      renderIssueResult();
+    } catch(err){
+      addLog('✗ 오류: ' + err.message);
+    }
+  }
+  function addLog(msg){
+    const d = document.createElement('div');
+    d.textContent = '• ' + msg;
+    log.appendChild(d);
+  }
+
+  function renderIssueResult(){
+    $('#issue-result').hidden = false;
+    $('#issue-count').textContent = issuedList.length;
+    const grid = $('#qr-grid');
+    grid.innerHTML = '';
+    const base = location.origin + location.pathname;
+    issuedList.forEach(stu=>{
+      const url = `${base}?k=${stu.key}`;
+      const card = document.createElement('div');
+      card.className = 'qr-card';
+      const who = document.createElement('div');
+      who.className = 'who';
+      who.textContent = stu.name;
+      const meta = document.createElement('div');
+      meta.className = 'meta';
+      meta.textContent = `${stu.school} ${stu.grade}학년 ${stu.classNo}반 ${stu.studentNo}번`;
+      const qrBox = document.createElement('div');
+      qrBox.className = 'qr-box';
+      const qrDiv = document.createElement('div');
+      qrBox.appendChild(qrDiv);
+      const keyTxt = document.createElement('div');
+      keyTxt.className = 'url';
+      keyTxt.textContent = stu.key;
+      card.appendChild(who); card.appendChild(meta); card.appendChild(qrBox); card.appendChild(keyTxt);
+      grid.appendChild(card);
+      new QRCode(qrDiv, { text:url, width:150, height:150, correctLevel: QRCode.CorrectLevel.M });
+    });
+  }
+
+  $('#btn-download-map').addEventListener('click', ()=>{
+    if(!issuedList.length) return;
+    const school = issuedList[0].school;
+    const header = ['학번키','중학교','학년','반','번호','성명'];
+    const body = issuedList.map(s=>[s.key, s.school, s.grade, s.classNo, s.studentNo, s.name].map(sanitizeCell));
+    const ws = XLSX.utils.aoa_to_sheet([header, ...body]);
+    ws['!cols'] = header.map(()=>({wch:16}));
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, '매핑표');
+    XLSX.writeFile(wb, `매핑표_${safeFileSeg(school)}_${new Date().toISOString().slice(0,10)}.xlsx`);
+    alert('매핑표가 다운로드되었습니다. 학교 내부에서만 보관하시고, 도교육청에는 원본을 보내지 마세요.');
+  });
+
+  $('#btn-print-qr').addEventListener('click', ()=>window.print());
+
+  $('#btn-issue-clear').addEventListener('click', ()=>{
+    if(!confirm('발급 내역을 모두 지울까요? 매핑표를 먼저 다운로드했는지 확인하세요.')) return;
+    issuedList = [];
+    $('#qr-grid').innerHTML = '';
+    $('#issue-result').hidden = true;
+    $('#file-log').innerHTML = '';
+    $('#file-input').value = '';
+  });
+}
+
+// ════════════════════════════════════════════════════════════
+//  [관리자] ② 도교육청 집계 탭
+// ════════════════════════════════════════════════════════════
+let officeRawRows = [];
+let officeRows = [];
+let officeStats = null;
+
+function initOfficeTab(){
+  $('#btn-fetch').addEventListener('click', async ()=>{
+    const token = $('#admin-token').value.trim();
+    const status = $('#fetch-status');
+    if(!token){
+      status.textContent = '✗ 토큰을 입력하세요.';
+      status.style.color = '#b42318';
+      return;
+    }
+    status.textContent = '불러오는 중...';
+    status.style.color = '#1d4ed8';
+    try {
+      const res = await fetch(API_EXPORT, { headers:{ 'X-Admin-Token': token } });
+      if(!res.ok) throw new Error('서버 응답 ' + res.status);
+      const data = await res.json();
+      officeRawRows = normalizeServerRows(data);
+      status.textContent = `✓ ${officeRawRows.length}건 불러옴`;
+      status.style.color = '#166534';
+      rebuildOfficeDashboard();
+    } catch(e){
+      status.textContent = '✗ 실패: ' + e.message + ' — JSON/CSV 파일로 대체 입력하세요.';
+      status.style.color = '#b42318';
+      clearOfficeDashboard();
+    }
+  });
+
+  $('#btn-import-json').addEventListener('click', ()=> $('#json-input').click());
+  $('#json-input').addEventListener('change', async e=>{
+    const file = e.target.files[0];
+    if(!file) return;
+    try {
+      const txt = await file.text();
+      let data;
+      if(/\.csv$/i.test(file.name)){
+        const wb = XLSX.read(txt, {type:'string'});
+        data = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {defval:''});
+      } else {
+        data = JSON.parse(txt);
+      }
+      officeRawRows = normalizeServerRows(data);
+      $('#fetch-status').textContent = `✓ 파일에서 ${officeRawRows.length}건 불러옴`;
+      $('#fetch-status').style.color = '#166534';
+      rebuildOfficeDashboard();
+    } catch(err){
+      $('#fetch-status').textContent = '✗ 파일 파싱 실패: ' + err.message;
+      $('#fetch-status').style.color = '#b42318';
+      clearOfficeDashboard();
+    }
+  });
+
+  $('#office-search').addEventListener('input', renderOfficePreview);
+  $('#office-filter').addEventListener('change', renderOfficePreview);
+  $('#btn-office-clear').addEventListener('click', ()=>{
+    if(!confirm('가명 응답 데이터를 초기화할까요?')) return;
+    officeRawRows = [];
+    officeRows = [];
+    officeStats = null;
+    $('#fetch-status').textContent = '';
+    $('#admin-token').value = '';
+    $('#json-input').value = '';
+    clearOfficeDashboard();
+  });
+  $('#btn-office-export').addEventListener('click', exportOfficeWorkbook);
+}
+
+function clearOfficeDashboard(){
+  officeRawRows = [];
+  officeRows = [];
+  officeStats = null;
+  $('#office-dashboard').hidden = true;
+  $('#btn-office-export').disabled = true;
+  $('#metric-raw').textContent = '0';
+  $('#metric-canonical').textContent = '0';
+  $('#metric-valid').textContent = '0';
+  $('#metric-anomaly').textContent = '0';
+  $('#top-school-pill').textContent = '상위 0개';
+  $('#anomaly-pill').textContent = '0건';
+  $('#latest-update-pill').textContent = '최근 제출 -';
+  $('#office-search').value = '';
+  $('#office-filter').value = 'all';
+  renderTable('#top-school-table', ['순위','학교','응답 수','비율','지역'], []);
+  renderTable('#second-school-table', ['순위','학교','응답 수','비율','지역'], []);
+  renderTable('#region-table', ['지역','응답 수','비율'], []);
+  renderTable('#anomaly-table', ['관리 코드','1지망','2지망','제출시각','사유'], []);
+  renderTable('#office-preview-table', ['관리 코드','1지망','2지망','제출시각','상태'], []);
+  $('#date-bars').innerHTML = '';
+}
+
+function rebuildOfficeDashboard(){
+  officeRows = canonicalizeRows(officeRawRows);
+  const validRows = officeRows.filter(isValidResponse);
+  const anomalyRows = officeRows.filter(r=>!isValidResponse(r) || !parseDateSafe(r.ts));
+  const firstChoiceRows = buildCountRows(validRows, 'c1');
+  const secondChoiceRows = buildCountRows(validRows, 'c2');
+  const regionRows = buildRegionRows(validRows, 'c1');
+  const dateRows = buildDateRows(officeRows);
+  officeStats = {
+    rawCount: officeRawRows.length,
+    canonicalCount: officeRows.length,
+    validCount: validRows.length,
+    anomalyCount: anomalyRows.length,
+    duplicateCount: Math.max(0, officeRawRows.length - officeRows.length),
+    firstChoiceRows,
+    secondChoiceRows,
+    regionRows,
+    dateRows,
+    anomalyRows,
+    validRows,
+    latestTs: officeRows[0]?.ts || ''
+  };
+
+  $('#office-dashboard').hidden = false;
+  $('#btn-office-export').disabled = !officeRows.length;
+  $('#metric-raw').textContent = officeStats.rawCount.toLocaleString('ko-KR');
+  $('#metric-canonical').textContent = officeStats.canonicalCount.toLocaleString('ko-KR');
+  $('#metric-valid').textContent = officeStats.validCount.toLocaleString('ko-KR');
+  $('#metric-anomaly').textContent = officeStats.anomalyCount.toLocaleString('ko-KR');
+  $('#top-school-pill').textContent = `상위 ${Math.min(10, firstChoiceRows.length)}개`;
+  $('#anomaly-pill').textContent = `${officeStats.anomalyCount}건`;
+  $('#latest-update-pill').textContent = officeStats.latestTs ? `최근 제출 ${fmtDateTime(officeStats.latestTs)}` : '최근 제출 -';
+
+  renderTable('#top-school-table', ['순위','학교','응답 수','비율','지역'], firstChoiceRows.slice(0,10).map(r=>[r.rank, r.name, `${r.count}건`, r.share, r.region]));
+  renderTable('#second-school-table', ['순위','학교','응답 수','비율','지역'], secondChoiceRows.slice(0,10).map(r=>[r.rank, r.name, `${r.count}건`, r.share, r.region]));
+  renderTable('#region-table', ['지역','응답 수','비율'], regionRows.map(r=>[r.region, `${r.count}건`, r.share]));
+  renderBars('#date-bars', dateRows);
+  renderTable('#anomaly-table', ['관리 코드','1지망','2지망','제출시각','사유'], anomalyRows.slice(0,200).map(r=>[
+    maskKey(r.key), r.c1 || '-', r.c2 || '-', fmtDateTime(r.ts), getReason(r)
+  ]), '검토가 필요한 응답이 없습니다.');
+  renderOfficePreview();
+}
+
+function renderOfficePreview(){
+  if(!officeRows.length){
+    renderTable('#office-preview-table', ['관리 코드','1지망','2지망','제출시각','상태'], []);
+    return;
+  }
+  const q = ($('#office-search').value || '').trim().toLowerCase();
+  const filter = $('#office-filter').value;
+  const rows = officeRows.filter(r=>{
+    const isValid = isValidResponse(r) && !!parseDateSafe(r.ts);
+    if(filter === 'valid' && !isValid) return false;
+    if(filter === 'anomaly' && isValid) return false;
+    if(!q) return true;
+    const hay = [r.key, r.c1, r.c2, fmtDateTime(r.ts)].join(' ').toLowerCase();
+    return hay.includes(q);
+  });
+  renderTable('#office-preview-table', ['관리 코드','1지망','2지망','제출시각','상태'], rows.slice(0,300).map(r=>[
+    maskKey(r.key),
+    r.c1 || '-',
+    r.c2 || '-',
+    fmtDateTime(r.ts),
+    isValidResponse(r) && !!parseDateSafe(r.ts)
+      ? { html:'<span class="tag-ok">유효</span>' }
+      : { html:'<span class="tag-danger">검토 필요</span>' }
+  ]), '조건에 맞는 응답이 없습니다.');
+}
+
+function exportOfficeWorkbook(){
+  if(!officeRows.length || !officeStats) return;
+  const wb = XLSX.utils.book_new();
+
+  const rawHeader = ['관리키','1지망','2지망','제출시각','상태'];
+  const rawBody = officeRows.map(r=>[
+    r.key,
+    r.c1 || '',
+    r.c2 || '',
+    r.ts || '',
+    isValidResponse(r) && !!parseDateSafe(r.ts) ? '유효' : getReason(r)
+  ].map(sanitizeCell));
+  const wsRaw = XLSX.utils.aoa_to_sheet([rawHeader, ...rawBody]);
+  wsRaw['!cols'] = [{wch:20},{wch:24},{wch:24},{wch:22},{wch:28}];
+  XLSX.utils.book_append_sheet(wb, wsRaw, '가명응답_최신');
+
+  const h1 = ['순위','학교','응답 수','비율','지역'];
+  const b1 = officeStats.firstChoiceRows.map(r=>[r.rank, r.name, r.count, r.share, r.region].map(sanitizeCell));
+  const ws1 = XLSX.utils.aoa_to_sheet([h1, ...b1]);
+  ws1['!cols'] = [{wch:8},{wch:28},{wch:12},{wch:12},{wch:14}];
+  XLSX.utils.book_append_sheet(wb, ws1, '1지망집계');
+
+  const h2 = ['순위','학교','응답 수','비율','지역'];
+  const b2 = officeStats.secondChoiceRows.map(r=>[r.rank, r.name, r.count, r.share, r.region].map(sanitizeCell));
+  const ws2 = XLSX.utils.aoa_to_sheet([h2, ...b2]);
+  ws2['!cols'] = [{wch:8},{wch:28},{wch:12},{wch:12},{wch:14}];
+  XLSX.utils.book_append_sheet(wb, ws2, '2지망집계');
+
+  const h3 = ['지역','응답 수','비율'];
+  const b3 = officeStats.regionRows.map(r=>[r.region, r.count, r.share].map(sanitizeCell));
+  const ws3 = XLSX.utils.aoa_to_sheet([h3, ...b3]);
+  ws3['!cols'] = [{wch:16},{wch:12},{wch:12}];
+  XLSX.utils.book_append_sheet(wb, ws3, '지역별1지망');
+
+  const h4 = ['날짜','응답 수'];
+  const b4 = officeStats.dateRows.map(r=>[r.date, r.count].map(sanitizeCell));
+  const ws4 = XLSX.utils.aoa_to_sheet([h4, ...b4]);
+  ws4['!cols'] = [{wch:14},{wch:12}];
+  XLSX.utils.book_append_sheet(wb, ws4, '일자별제출');
+
+  if(officeStats.anomalyRows.length){
+    const h5 = ['관리키','1지망','2지망','제출시각','사유'];
+    const b5 = officeStats.anomalyRows.map(r=>[r.key, r.c1 || '', r.c2 || '', r.ts || '', getReason(r)].map(sanitizeCell));
+    const ws5 = XLSX.utils.aoa_to_sheet([h5, ...b5]);
+    ws5['!cols'] = [{wch:20},{wch:24},{wch:24},{wch:22},{wch:28}];
+    XLSX.utils.book_append_sheet(wb, ws5, '검토필요응답');
+  }
+
+  XLSX.writeFile(wb, `진학지망_가명집계_${new Date().toISOString().slice(0,10)}.xlsx`);
+}
+</script>
+</body>
+</html>
