@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>고교 지망 조사</title>
+<title>고등학교 진학 지망 조사 폼 (테스트)</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
   :root{
@@ -62,15 +62,15 @@
 
 <section id="student-view">
   <div class="notice">
-    ⚠ 개인정보는 이 웹사이트 서버에 저장되지 않습니다. 작성 후 <b>엑셀 파일로 다운로드</b>하여 담임 선생님께 제출해 주세요.
+    제약 조건: 개인정보 서버 저장 불가. <br/> 취합 방식: 작성 후에 엑셀 파일로 다운로드하여 담임 선생님께 제출하면 그걸 다시 취합
   </div>
   <div class="card">
     <form id="survey-form" autocomplete="off" novalidate>
-      <label for="school">현재 재학 중학교</label>
+      <label for="school">재학 중인 중학교</label>
       <input id="school" name="school" type="text" required maxlength="40">
       <div class="row">
         <div>
-          <label for="grade">학년</label>
+          <label for="grade">학년 (기본 설정: 3학년)</label>
           <select id="grade" name="grade" required>
             <option value="">선택</option><option>1</option><option>2</option><option selected>3</option>
           </select>
