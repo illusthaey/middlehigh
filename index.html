@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>고교 진학 입학원서 (QR 하이브리드)</title>
+<link href="/static/style.css?v=20260423-hybrid" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/davidshimjs/qrcodejs/qrcode.min.js"></script>
+<style>
+  .qr-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+  .qr-tabs .chip{cursor:pointer;border:1px solid #d1d5db;background:#fff;padding:8px 14px;border-radius:999px;font-weight:700;font-size:.95rem;color:#111}
+  .qr-tabs .chip.is-active{background:#111;color:#fff;border-color:#111}
+  .notice-warn{background:#fffaeb;color:#7c2d12;border:1px solid #fedf89;padding:12px 14px;border-radius:12px;margin:0 0 16px;font-weight:600}
+  .notice-info{background:#eff6ff;color:#1e40af;border:1px solid #bfdbfe;padding:12px 14px;border-radius:12px;margin:0 0 16px;font-weight:600}
+  .notice-sensitive{background:#fef2f2;color:#991b1b;border:1px solid #fecaca;padding:12px 14px;border-radius:12px;margin:0 0 16px;font-weight:600}
+  .field{display:flex;flex-direction:column;gap:4px;margin:12px 0}
+  .field label{font-size:.98rem;font-weight:700;color:#111;margin:0}
+  .key-chip{display:inline-block;padding:6px 12px;background:#f3f4f6;border:1px solid #d1d5db;border-radius:8px;font-family:ui-monospace,Menlo,monospace;font-size:.95rem;color:#444}
+  .school-picker{display:grid;grid-template-columns:1fr 2fr;gap:8px}
+  .school-picker select{min-width:0}
+  .school-custom{margin-top:8px}
+  .school-custom[hidden]{display:none !important}
+  .radio-grid,.check-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+  .radio-grid label,.check-grid label{display:flex;align-items:center;gap:6px;padding:8px 10px;border:1px solid #e5e7eb;border-radius:8px;background:#fff;cursor:pointer;font-size:.95rem;font-weight:500}
+  .radio-grid input:checked + span,.check-grid input:checked + span{font-weight:700}
+  .radio-grid label:has(input:checked){border-color:#111;background:#eef2ff}
+  .check-grid label:has(input:checked){border-color:#111;background:#fdf2f8}
+  details.local-only{border:1px dashed #d1d5db;border-radius:12px;padding:10px 14px;margin:14px 0;background:#fafbfc}
+  details.local-only > summary{font-weight:700;cursor:pointer}
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  #drop-zone{border:2px dashed #d1d5db;border-radius:14px;padding:32px 20px;text-align:center;background:#fafbfc;transition:all .15s}
+  #drop-zone.dragging{border-color:#111;background:#eef2ff}
+  #drop-zone input[type=file]{display:none}
+  .file-log{margin-top:12px;font-size:.95rem;color:#555;text-align:left}
+  .file-log div{padding:3px 0}
+  .btn-row{display:flex;flex-wrap:wrap;gap:10px;margin-top:16px}
+  .qr-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:16px}
+  .qr-card{border:1px solid #d1d5db;border-radius:10px;padding:12px;text-align:center;background:#fff;page-break-inside:avoid;break-inside:avoid}
+  .qr-card .who{font-weight:700;font-size:.98rem;margin-bottom:6px}
+  .qr-card .meta{font-size:.85rem;color:#555;margin-bottom:8px}
+  .qr-card .qr-box{display:flex;justify-content:center}
+  .qr-card .qr-box img,.qr-card .qr-box canvas{width:150px !important;height:150px !important}
+  .qr-card .url{font-size:.72rem;color:#888;margin-top:6px;word-break:break-all}
+  .preview-wrap{width:100%;overflow:auto;max-height:360px;border:1px solid #e5e7eb;border-radius:10px;margin-top:10px}
+  .preview-wrap table{width:100%;border-collapse:collapse;font-size:.92rem}
+  .preview-wrap th,.preview-wrap td{border:1px solid #e5e7eb;padding:6px 8px;text-align:left;white-space:nowrap}
+  .preview-wrap th{background:#f9fafb;position:sticky;top:0;font-weight:700}
+  .done-box{text-align:center;padding:40px 20px}
+  .done-box .check{font-size:64px;margin-bottom:12px}
+
+  /* ===== 입학원서 A4 인쇄 레이아웃 ===== */
+  .form-paper{
+    width:210mm;max-width:100%;margin:20px auto;padding:14mm 12mm;
+    background:#fff;border:1px solid #ccc;
+    font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;
+    color:#000;font-size:10pt;line-height:1.35;
+  }
+  .form-paper table{width:100%;border-collapse:collapse;table-layout:fixed}
+  .form-paper td,.form-paper th{border:1px solid #000;padding:4px 6px;vertical-align:middle;font-size:9.5pt;word-break:keep-all}
+  .form-paper .title{font-size:22pt;font-weight:700;letter-spacing:18px;text-align:center;padding:8px 0}
+  .form-paper .subtitle-right{text-align:right;font-weight:700;font-size:10pt;padding-right:6px}
+  .form-paper .lbl{background:#f3f4f6;text-align:center;font-weight:600;font-size:9pt;width:60px}
+  .form-paper .bg-blue{background:repeating-linear-gradient(45deg,#cfe0ff 0 4px,#e6eeff 4px 8px)}
+  .form-paper .bg-pink{background:repeating-linear-gradient(45deg,#fbcfe8 0 4px,#fce7f3 4px 8px)}
+  .form-paper .center{text-align:center}
+  .form-paper .right{text-align:right}
+  .form-paper .val{min-height:18px;padding:2px 6px}
+  .form-paper .picked{font-weight:700;font-size:13pt}
+  .form-paper .attest{padding:8px 0;font-size:9.5pt;line-height:1.7}
+  .form-paper .attest ol{margin:4px 0 0 18px;padding:0}
+  .form-paper .sign-right{text-align:right;margin-top:14px;font-size:10pt}
+  .form-paper .org-big{font-size:18pt;font-weight:800;margin-top:10px}
+  .form-paper .receipt-title{font-size:13pt;font-weight:700;text-align:center;width:80px}
+  .form-paper .receipt{margin-top:10mm}
+
+  @media (max-width:480px){
+    .school-picker{grid-template-columns:1fr}
+    .radio-grid,.check-grid{grid-template-columns:1fr}
+    .grid-2{grid-template-columns:1fr}
+  }
+  @media print{
+    @page{size:A4;margin:0}
+    html,body{background:#fff !important;margin:0 !important;padding:0 !important}
+    .no-print,.site-header,.qr-tabs,.btn,.notice-warn,.notice-info,.notice-sensitive,
+    #drop-zone,.btn-row,.file-log,details.local-only,#student-form,#student-done{display:none !important}
+    .section{border:none !important;box-shadow:none !important;padding:0 !important;margin:0 !important}
+    .form-paper{border:0 !important;margin:0 !important;width:210mm !important;box-shadow:none !important;page-break-after:always}
+    .qr-grid{grid-template-columns:repeat(3,1fr);gap:8px}
+    .qr-card{border:1px dashed #999}
+    .qr-card .url{display:none}
+  }
+</style>
+</head>
+<body class="survey-page">
+
+<header class="site-header no-print">
+  <div class="shell">
+    <h1>고교 진학 입학원서 (QR 하이브리드)</h1>
+    <p class="sub">지망·전형만 온라인 선택 · 주민번호·서명은 종이 자필</p>
+    <div class="qr-tabs" id="admin-tabs" role="tablist" hidden>
+      <button type="button" class="chip is-active" data-view="issue" role="tab">① 학교: QR 발급</button>
+      <button type="button" class="chip" data-view="export" role="tab">② 도교육청: 결합 내보내기</button>
+    </div>
+  </div>
+</header>
+
+<main class="page-main page-main--compact">
+
+  <!-- ══════════ 학생 응답 모드 ══════════ -->
+  <section id="student-view" class="section" hidden>
+    <div class="notice-info no-print">
+      <b>고교 진학 입학원서</b> · QR로 본인 확인 완료<br>
+      온라인에서는 <b>지망·전형만</b> 선택하세요. 주민번호·서명은 <b>인쇄 후 자필</b>로 기입합니다.
+    </div>
+
+    <form id="student-form" autocomplete="off" novalidate>
+      <div class="field">
+        <label>내 고유 코드</label>
+        <div><span class="key-chip" id="my-key"></span></div>
+      </div>
+
+      <h3 style="margin-top:18px">1. 지망 고등학교</h3>
+      <div class="field">
+        <label>1지망</label>
+        <div class="school-picker">
+          <select id="region1"><option value="">시/군 선택</option></select>
+          <select id="choice1"><option value="">먼저 시/군을 선택</option></select>
+        </div>
+        <input class="school-custom" id="choice1-custom" type="text" maxlength="40" placeholder="학교명을 직접 입력하세요" hidden>
+      </div>
+      <div class="field">
+        <label>2지망</label>
+        <div class="school-picker">
+          <select id="region2"><option value="">시/군 선택</option></select>
+          <select id="choice2"><option value="">먼저 시/군을 선택</option></select>
+        </div>
+        <input class="school-custom" id="choice2-custom" type="text" maxlength="40" placeholder="학교명을 직접 입력하세요" hidden>
+      </div>
+
+      <h3 style="margin-top:18px">2. 전형 유형 <small style="font-weight:400;color:#666">(해당란 하나만)</small></h3>
+      <div class="radio-grid" id="transfer-grid"></div>
+
+      <h3 style="margin-top:18px">3. 2단계 배제배정 <small style="font-weight:400;color:#666">(해당 시 체크)</small></h3>
+      <div class="check-grid" id="exclude-grid"></div>
+
+      <details class="local-only no-print">
+        <summary>4. 원서 출력용 정보 (이 기기 안에만 저장, 서버 전송 안 함)</summary>
+        <div class="notice-sensitive" style="margin-top:10px">
+          아래 항목은 <b>종이 원서 출력을 위해서만</b> 입력합니다. 서버에 전송되지 않습니다.<br>
+          <b>주민번호·서명은 종이에 자필로</b> 작성하세요.
+        </div>
+        <div class="field"><label>성명</label><input id="p-name" maxlength="20"></div>
+        <div class="field"><label>주소(도로명)</label><input id="p-addr" maxlength="80"></div>
+        <div class="field"><label>전화</label><input id="p-phone" maxlength="20" inputmode="tel"></div>
+
+        <h4 style="margin:14px 0 6px">졸업 상황</h4>
+        <div class="field">
+          <label>구분</label>
+          <select id="p-grad-type">
+            <option value="">선택</option>
+            <option>졸업예정</option><option>졸업</option><option>고입검정고시합격</option>
+          </select>
+        </div>
+        <div class="grid-2">
+          <div class="field"><label>년</label><input id="p-grad-y" type="number" min="1990" max="2030" placeholder="2026"></div>
+          <div class="field"><label>월</label><input id="p-grad-m" type="number" min="1" max="12" placeholder="2"></div>
+        </div>
+        <div class="grid-2">
+          <div class="field"><label>일</label><input id="p-grad-d" type="number" min="1" max="31"></div>
+          <div class="field"><label>시도 (검정고시일 때)</label><input id="p-grad-sido" maxlength="20" placeholder="강원특별자치도"></div>
+        </div>
+
+        <h4 style="margin:14px 0 6px">보호자</h4>
+        <div class="grid-2">
+          <div class="field"><label>성명</label><input id="g-name" maxlength="20"></div>
+          <div class="field"><label>관계</label>
+            <select id="g-rel">
+              <option value="">선택</option><option>부</option><option>모</option><option>조부</option><option>조모</option><option>기타</option>
+            </select>
+          </div>
+        </div>
+        <div class="grid-2">
+          <div class="field"><label>보호자 전화</label><input id="g-phone" maxlength="20" inputmode="tel"></div>
+          <div class="field"><label>학생 전화</label><input id="s-phone" maxlength="20" inputmode="tel"></div>
+        </div>
+
+        <h4 style="margin:14px 0 6px">학교 기재사항 (담임이 채워줌, 비워두어도 됨)</h4>
+        <div class="grid-2">
+          <div class="field"><label>출신 중학교</label><input id="p-school" maxlength="40"></div>
+          <div class="field"><label>석차백분율</label><input id="p-rank" maxlength="10"></div>
+        </div>
+      </details>
+
+      <div id="student-error" style="color:#b42318;font-weight:600;min-height:1.2em;margin-top:8px"></div>
+      <div class="btn-row no-print">
+        <button type="button" class="btn primary" id="btn-preview">입학원서 미리보기/인쇄</button>
+        <button type="button" class="btn ghost" id="btn-submit">서버에 제출 (지망·전형만)</button>
+        <button type="button" class="btn ghost" id="btn-offline">엑셀로 제출</button>
+      </div>
+    </form>
+
+    <div id="student-done" class="done-box no-print" hidden>
+      <div class="check">✅</div>
+      <h2 style="margin:0 0 8px">서버 제출 완료</h2>
+      <p class="muted">인쇄한 원서에 자필 기재·서명 후 학교에 제출하세요.</p>
+      <div style="margin-top:10px"><span class="key-chip" id="done-key"></span></div>
+    </div>
+
+    <!-- 입학원서 미리보기 (인쇄 대상) -->
+    <div id="form-paper" class="form-paper" hidden>
+      <table>
+        <colgroup>
+          <col style="width:9%"><col style="width:9%">
+          <col style="width:18%"><col style="width:18%">
+          <col style="width:18%"><col style="width:14%">
+          <col style="width:14%">
+        </colgroup>
+        <tr>
+          <td rowspan="2" class="lbl">학교군</td>
+          <td rowspan="2" class="center" style="font-size:13pt;font-weight:700">원주</td>
+          <td colspan="4" class="title">입 학 원 서</td>
+          <td class="subtitle-right">교육감입학전형</td>
+        </tr>
+        <tr><td colspan="5" style="border:none"></td></tr>
+
+        <tr>
+          <td rowspan="5" class="lbl">지<br>원<br>자</td>
+          <td class="lbl">성명</td>
+          <td class="val" id="o-name" colspan="2"></td>
+          <td class="lbl">주민등록번호</td>
+          <td class="val" colspan="2"></td>
+        </tr>
+        <tr><td class="lbl">주소</td><td class="val" colspan="5">(도로명) <span id="o-addr"></span></td></tr>
+        <tr><td class="lbl">전화</td><td class="val" colspan="5" id="o-phone"></td></tr>
+        <tr>
+          <td rowspan="2" class="lbl">졸업<br>상황</td>
+          <td class="val" colspan="3"><span id="o-grad-ymd"></span></td>
+          <td class="val" colspan="2" id="o-grad-type"></td>
+        </tr>
+        <tr>
+          <td class="val" colspan="3"><span id="o-grad-ymd2"></span></td>
+          <td class="val" colspan="2" id="o-grad-kum"></td>
+        </tr>
+
+        <tr>
+          <td rowspan="2" class="lbl">보<br>호<br>자</td>
+          <td class="lbl">성명</td>
+          <td class="val" id="o-gname"></td>
+          <td class="lbl">관계</td>
+          <td class="val" id="o-grel"></td>
+          <td class="lbl">보호자전화</td>
+          <td class="val" id="o-gphone"></td>
+        </tr>
+        <tr>
+          <td colspan="3" style="border:none"></td>
+          <td class="lbl">학생전화</td>
+          <td class="val" id="o-sphone" colspan="2"></td>
+        </tr>
+
+        <tr><td colspan="7" class="center bg-blue" style="font-weight:700">전형 유형 (해당란에 ○표)</td></tr>
+        <tr id="o-transfer-header"></tr>
+        <tr id="o-transfer-marks"></tr>
+
+        <tr><td colspan="7" class="bg-blue" style="font-weight:700;padding-left:8px">우선배정학교</td></tr>
+        <tr>
+          <td colspan="2" class="lbl">1단계 지망학교</td>
+          <td colspan="2" class="val">1지망: <b id="o-c1"></b></td>
+          <td colspan="3" class="val">2지망: <b id="o-c2"></b></td>
+        </tr>
+        <tr>
+          <td colspan="2" class="lbl bg-pink">2단계 배제배정</td>
+          <td colspan="5" class="val bg-pink" id="o-exclude"></td>
+        </tr>
+
+        <tr>
+          <td colspan="2" class="lbl">석차백분율</td>
+          <td colspan="3" class="val" id="o-rank"></td>
+          <td class="lbl">작성자</td>
+          <td class="val right">(인)</td>
+        </tr>
+      </table>
+
+      <div class="center" style="margin-top:10px;font-size:10pt">
+        위 기재 사항이 틀림없음을 증명합니다.<br>
+        2026 년&nbsp;&nbsp;&nbsp;&nbsp;월&nbsp;&nbsp;&nbsp;&nbsp;일<br>
+        <b style="font-size:11pt">강원특별자치도원주교육지원청교육장 &nbsp;[ 인 ]</b>
+      </div>
+
+      <div class="attest" style="border:1px solid #000;padding:8px 10px;margin-top:10px">
+        <ol>
+          <li>위와 같이 2026학년도 강원특별자치도교육감 입학전형을 실시하는 지역의 고등학교에 입학하고자 입학원서를 제출합니다.</li>
+          <li>컴퓨터 배정프로그램에 의한 임의 추첨 배정 결과에 대하여 어떠한 이의도 제기하지 않겠습니다.</li>
+          <li>초·중등교육법 제47조 및 동법 시행령 제81조, 제82조, 제84조, 제98조에 의거 수집한 개인정보는 입학관리 업무를 계속하는 동안 보유·이용 및 활용하는 것에 동의합니다.</li>
+        </ol>
+        <div class="sign-right">
+          2026 년&nbsp;&nbsp;월&nbsp;&nbsp;일<br>
+          지원자&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(인)<br>
+          보호자&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(인)
+        </div>
+      </div>
+
+      <div class="org-big">강원특별자치도교육감 귀하</div>
+
+      <div class="receipt">
+        <table>
+          <tr>
+            <td rowspan="5" class="receipt-title">접 수 증</td>
+            <td class="lbl">접수번호</td><td colspan="3"></td>
+          </tr>
+          <tr><td class="lbl">출신학교</td><td colspan="3" id="o-school"></td></tr>
+          <tr><td class="lbl">반번호</td><td colspan="3">제&nbsp;&nbsp;&nbsp;학년&nbsp;&nbsp;&nbsp;반&nbsp;&nbsp;&nbsp;번</td></tr>
+          <tr><td class="lbl">성명</td><td colspan="3" id="o-name2"></td></tr>
+          <tr><td class="lbl">접수자</td><td colspan="3" class="right">(인)</td></tr>
+        </table>
+      </div>
+
+      <div class="btn-row no-print" style="margin-top:14px">
+        <button type="button" class="btn primary" id="btn-do-print">인쇄하기</button>
+        <button type="button" class="btn ghost" id="btn-back">수정하기</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════ ① 학교 담당자: QR 발급 ══════════ -->
+  <section id="issue-view" class="section" hidden>
+    <div class="notice-warn">
+      <b>학교 담당자용</b> — 이 화면의 매핑표는 <b>학교 내부에서만</b> 보관하세요.
+    </div>
+    <div class="field"><label for="issue-school">중학교명</label>
+      <input id="issue-school" type="text" maxlength="40" placeholder="예: OO중학교"></div>
+    <div id="drop-zone">
+      <p style="margin:0 0 10px">학생 명단 <b>.xlsx</b>를 여기에 드래그하세요.<br>
+        <small style="color:#666">필요 컬럼: 학년 · 반 · 번호 · 성명</small></p>
+      <label for="file-input" class="btn primary">파일 선택</label>
+      <input type="file" id="file-input" accept=".xlsx,.xls">
+      <div class="file-log" id="file-log"></div>
+    </div>
+    <div id="issue-result" hidden>
+      <div class="btn-row">
+        <button type="button" class="btn primary" id="btn-download-map">매핑표(.xlsx) 다운로드</button>
+        <button type="button" class="btn ghost" id="btn-print-qr">QR 카드 인쇄</button>
+        <button type="button" class="btn ghost" id="btn-issue-clear">다시 시작</button>
+      </div>
+      <h3 style="margin-top:18px">발급된 QR 카드 (<span id="issue-count">0</span>개)</h3>
+      <div id="qr-grid" class="qr-grid"></div>
+    </div>
+  </section>
+
+  <!-- ══════════ ② 도교육청: 결합 내보내기 ══════════ -->
+  <section id="export-view" class="section" hidden>
+    <div class="notice-warn">
+      <b>도교육청 담당자용</b> — 서버의 가명정보 + 학교 매핑표를 <b>이 브라우저 안에서만</b> 결합합니다.
+    </div>
+    <h3>STEP 1. 서버에서 응답 가져오기</h3>
+    <div class="field"><label for="admin-token">관리자 토큰</label>
+      <input id="admin-token" type="password" autocomplete="off"></div>
+    <div class="btn-row">
+      <button type="button" class="btn primary" id="btn-fetch">서버 응답 불러오기</button>
+      <button type="button" class="btn ghost" id="btn-import-json">JSON/CSV로 대체 입력</button>
+      <input type="file" id="json-input" accept=".json,.csv" hidden>
+    </div>
+    <div id="fetch-status" style="margin-top:8px;font-weight:600"></div>
+
+    <h3 style="margin-top:22px">STEP 2. 학교 매핑표 업로드</h3>
+    <div id="map-drop-zone" style="border:2px dashed #d1d5db;border-radius:14px;padding:24px 16px;text-align:center;background:#fafbfc">
+      <p style="margin:0 0 10px">각 학교의 <b>매핑표 .xlsx</b>를 드래그하세요.</p>
+      <label for="map-input" class="btn primary">파일 선택</label>
+      <input type="file" id="map-input" multiple accept=".xlsx,.xls" hidden>
+      <div class="file-log" id="map-log"></div>
+    </div>
+
+    <h3 style="margin-top:22px">STEP 3. 결합 결과</h3>
+    <div id="merge-summary" class="notice-info" hidden></div>
+    <div class="preview-wrap" id="merge-preview-wrap" hidden><table id="merge-table"></table></div>
+    <div class="btn-row">
+      <button type="button" class="btn primary" id="btn-merge-export" disabled>통합 실명 엑셀 다운로드</button>
+      <button type="button" class="btn ghost" id="btn-export-clear">초기화</button>
+    </div>
+  </section>
+
+</main>
+
+<script>
+// ═══ 데이터 ═══
+const HIGH_SCHOOLS_BY_REGION = {
+  "강릉시":["강릉고등학교","강릉명륜고등학교","강릉문성고등학교","강릉여자고등학교","강릉정보공업고등학교","강릉제일고등학교","강릉중앙고등학교","강원예술고등학교","강일여자고등학교","경포고등학교","주문진고등학교"],
+  "고성군":["거진고등학교","고성고등학교","대진고등학교","동광산업과학고등학교"],
+  "동해시":["동해광희고등학교","동해삼육고등학교","동해상업고등학교","묵호고등학교","북평고등학교","북평여자고등학교"],
+  "삼척시":["가곡고등학교","도계고등학교","도계전산정보고등학교","삼일고등학교","삼척고등학교","삼척여자고등학교","원덕고등학교"],
+  "속초시":["설악고등학교","속초고등학교","속초여자고등학교"],
+  "양구군":["강원외국어고등학교","양구고등학교","양구여자고등학교"],
+  "양양군":["양양고등학교"],
+  "영월군":["마차고등학교","상동고등학교","석정여자고등학교","영월고등학교","주천고등학교","한국소방마이스터고등학교"],
+  "원주시":["강원과학고등학교","대성고등학교","문막고등학교","미래고등학교","북원여자고등학교","상지여자고등학교","섬강고등학교","영서고등학교","원주고등학교","원주금융회계고등학교","원주삼육고등학교","원주여자고등학교","원주의료고등학교","육민관고등학교","진광고등학교","치악고등학교"],
+  "인제군":["기린고등학교","신남고등학교","원통고등학교","인제고등학교"],
+  "정선군":["고한고등학교","사북고등학교","여량고등학교","임계고등학교","정선고등학교","정선정보공업고등학교","함백고등학교"],
+  "철원군":["김화고등학교","신철원고등학교","철원고등학교","철원여자고등학교"],
+  "춘천시":["강원고등학교","강원대학교사범대학부설고등학교","강원애니고등학교","강원체육고등학교","봉의고등학교","성수고등학교","성수여자고등학교","유봉여자고등학교","전인고등학교","춘천고등학교","춘천기계공업고등학교","춘천여자고등학교","춘천한샘고등학교"],
+  "태백시":["장성여자고등학교","철암고등학교","한국항공고등학교","황지고등학교","황지정보산업고등학교"],
+  "평창군":["대화고등학교","봉평고등학교","상지대관령고등학교","진부고등학교","평창고등학교"],
+  "홍천군":["강원생활과학고등학교","내면고등학교","서석고등학교","팔렬고등학교","홍천고등학교","홍천농업고등학교","홍천여자고등학교"],
+  "화천군":["간동고등학교","사내고등학교","화천고등학교","화천정산고등학교"],
+  "횡성군":["갑천고등학교","둔내고등학교","민족사관고등학교","안흥고등학교","현천고등학교","횡성고등학교","횡성여자고등학교"]
+};
+const CUSTOM_VALUE = "__custom__";
+const TRANSFER_TYPES = ["일반전형","동시지원","지체장애인","가정위탁·보호아동","쌍생아·다생아","장애정도가 심한 장애 부모","국가유공자 자녀","세 자녀 이상","암·희귀병·난치병","고입특례"];
+const EXCLUDE_OPTIONS = ["주소지원거리","원주읍면지역","강릉옥계중","강릉왕산중","부모재직교"];
+
+// ═══ 유틸 ═══
+const $ = s => document.querySelector(s);
+const $$ = s => document.querySelectorAll(s);
+const API_SUBMIT='/api/survey/submit'; const API_EXPORT='/api/survey/export';
+
+function sanitizeCell(v){
+  if(v===null||v===undefined) return '';
+  const s=String(v);
+  if(/^[=+\-@\t\r]/.test(s)) return "'"+s;
+  return s;
+}
+function safeFileSeg(v){ return String(v||'').replace(/[^\w가-힣]/g,'_').slice(0,30); }
+function nowISO(){ return new Date().toISOString(); }
+function genKey(){ const u=crypto.randomUUID(); return u.slice(0,8)+'-'+u.slice(9,13); }
+function esc(s){ const d=document.createElement('div'); d.textContent=s??''; return d.innerHTML; }
+
+// ═══ 모드 분기 ═══
+const params = new URLSearchParams(location.search);
+const studentKey = (params.get('k')||'').trim();
+if (studentKey && /^[a-f0-9]{8}-[a-f0-9]{4}$/.test(studentKey)) initStudentMode(studentKey);
+else initAdminMode();
+
+// ═══ 학교 선택기 ═══
+function initSchoolPicker(regionId, schoolId, customId){
+  const rs=$('#'+regionId), ss=$('#'+schoolId), cu=$('#'+customId);
+  Object.keys(HIGH_SCHOOLS_BY_REGION).forEach(r=>{
+    const o=document.createElement('option'); o.value=r; o.textContent=r; rs.appendChild(o);
+  });
+  const etc=document.createElement('option'); etc.value=CUSTOM_VALUE; etc.textContent='기타(직접 입력)'; rs.appendChild(etc);
+
+  rs.addEventListener('change', ()=>{
+    const r=rs.value; ss.innerHTML='';
+    if(!r){ ss.innerHTML='<option value="">먼저 시/군을 선택</option>'; ss.disabled=false; cu.hidden=true; cu.value=''; return; }
+    if(r===CUSTOM_VALUE){ ss.innerHTML='<option value="'+CUSTOM_VALUE+'">직접 입력</option>'; ss.disabled=true; cu.hidden=false; cu.focus(); return; }
+    ss.disabled=false; cu.hidden=true; cu.value='';
+    const o0=document.createElement('option'); o0.value=''; o0.textContent='학교 선택'; ss.appendChild(o0);
+    HIGH_SCHOOLS_BY_REGION[r].forEach(n=>{
+      const o=document.createElement('option'); o.value=n; o.textContent=n; ss.appendChild(o);
+    });
+    const oe=document.createElement('option'); oe.value=CUSTOM_VALUE; oe.textContent='기타(직접 입력)'; ss.appendChild(oe);
+  });
+  ss.addEventListener('change', ()=>{
+    if(ss.value===CUSTOM_VALUE){ cu.hidden=false; cu.focus(); } else { cu.hidden=true; cu.value=''; }
+  });
+}
+function getPicked(regionId, schoolId, customId){
+  const rs=$('#'+regionId), ss=$('#'+schoolId), cu=$('#'+customId);
+  if(rs.value===CUSTOM_VALUE || ss.value===CUSTOM_VALUE) return (cu.value||'').trim();
+  return (ss.value||'').trim();
+}
+
+// ═══ 전형/배제 그리드 렌더 ═══
+function renderTransferGrid(){
+  const g=$('#transfer-grid'); g.innerHTML='';
+  TRANSFER_TYPES.forEach((t,i)=>{
+    const lbl=document.createElement('label');
+    lbl.innerHTML=`<input type="radio" name="transfer" value="${esc(t)}"><span>${esc(t)}</span>`;
+    g.appendChild(lbl);
+  });
+}
+function renderExcludeGrid(){
+  const g=$('#exclude-grid'); g.innerHTML='';
+  EXCLUDE_OPTIONS.forEach(t=>{
+    const lbl=document.createElement('label');
+    lbl.innerHTML=`<input type="checkbox" name="exclude" value="${esc(t)}"><span>${esc(t)}</span>`;
+    g.appendChild(lbl);
+  });
+}
+
+// ═══ 학생 모드 ═══
+function initStudentMode(key){
+  $('#student-view').hidden=false;
+  $('#my-key').textContent=key; $('#done-key').textContent=key;
+  initSchoolPicker('region1','choice1','choice1-custom');
+  initSchoolPicker('region2','choice2','choice2-custom');
+  renderTransferGrid(); renderExcludeGrid();
+
+  function collect(){
+    const c1=getPicked('region1','choice1','choice1-custom');
+    const c2=getPicked('region2','choice2','choice2-custom');
+    const transfer=(document.querySelector('input[name=transfer]:checked')||{}).value||'';
+    const exclude=Array.from(document.querySelectorAll('input[name=exclude]:checked')).map(e=>e.value);
+    return {c1,c2,transfer,exclude};
+  }
+  function validate(d){
+    const err=$('#student-error'); err.textContent='';
+    if(!d.c1||!d.c2){ err.textContent='1지망과 2지망을 모두 선택하세요.'; return false; }
+    if(d.c1===d.c2){ err.textContent='1지망과 2지망이 같을 수 없습니다.'; return false; }
+    if(!d.transfer){ err.textContent='전형유형을 선택하세요.'; return false; }
+    return true;
+  }
+  function collectLocal(){
+    return {
+      name:$('#p-name').value.trim(), addr:$('#p-addr').value.trim(), phone:$('#p-phone').value.trim(),
+      gradType:$('#p-grad-type').value, gradY:$('#p-grad-y').value, gradM:$('#p-grad-m').value,
+      gradD:$('#p-grad-d').value, gradSido:$('#p-grad-sido').value.trim(),
+      gName:$('#g-name').value.trim(), gRel:$('#g-rel').value, gPhone:$('#g-phone').value.trim(),
+      sPhone:$('#s-phone').value.trim(), school:$('#p-school').value.trim(), rank:$('#p-rank').value.trim()
+    };
+  }
+
+  $('#btn-preview').addEventListener('click', ()=>{
+    const d=collect(); if(!validate(d)) return;
+    const L=collectLocal();
+    // 원서 영역 채우기
+    $('#o-name').textContent=L.name; $('#o-name2').textContent=L.name;
+    $('#o-addr').textContent=L.addr; $('#o-phone').textContent=L.phone;
+    const ymd=(y,m,dd)=> y||m||dd? `${y||'    '} 년  ${m||'  '} 월  ${dd||'  '} 일` : '';
+    $('#o-grad-ymd').textContent = (L.gradType==='졸업' || L.gradType==='졸업예정') ? ymd(L.gradY,L.gradM,L.gradD) : '';
+    $('#o-grad-ymd2').textContent = L.gradType==='고입검정고시합격' ? ymd(L.gradY,L.gradM,L.gradD) : '';
+    $('#o-grad-type').textContent = L.gradType==='졸업예정'?'졸업예정 (○)' : L.gradType==='졸업'?'졸 업 (○)' : '';
+    $('#o-grad-kum').textContent = L.gradType==='고입검정고시합격' ? `고입검정고시 합격 (○) ${L.gradSido}` : '';
+    $('#o-gname').textContent=L.gName; $('#o-grel').textContent=L.gRel;
+    $('#o-gphone').textContent=L.gPhone; $('#o-sphone').textContent=L.sPhone;
+    $('#o-school').textContent=L.school; $('#o-rank').textContent=L.rank;
+    $('#o-c1').textContent=d.c1; $('#o-c2').textContent=d.c2;
+    $('#o-exclude').textContent = EXCLUDE_OPTIONS.map(o=> d.exclude.includes(o)?`${o} (○)`:`${o} (  )`).join('  ');
+
+    // 전형유형 표 2줄
+    const hdr=$('#o-transfer-header'); const mk=$('#o-transfer-marks'); hdr.innerHTML=''; mk.innerHTML='';
+    TRANSFER_TYPES.forEach(t=>{
+      const th=document.createElement('td'); th.className='lbl'; th.textContent=t;
+      th.style.fontSize='8pt'; hdr.appendChild(th);
+      const td=document.createElement('td'); td.className='center'; td.textContent = d.transfer===t?'○':''; mk.appendChild(td);
+    });
+    // 셀 병합이 없으므로 7컬럼 초과 처리: 헤더에 td 10개면 layout 깨짐 → colspan으로 감싸기 위해 별도 테이블 필요. 단순화: 전체 너비에 맞게 10열 사용
+    hdr.innerHTML=''; mk.innerHTML='';
+    const hdrWrap=document.createElement('td'); hdrWrap.colSpan=7; hdrWrap.style.padding='0';
+    const mkWrap=document.createElement('td'); mkWrap.colSpan=7; mkWrap.style.padding='0';
+    const t1=document.createElement('table'); t1.style.width='100%'; t1.style.tableLayout='fixed'; t1.style.borderCollapse='collapse';
+    const tr1=document.createElement('tr'); const tr2=document.createElement('tr');
+    TRANSFER_TYPES.forEach(t=>{
+      const th=document.createElement('td'); th.textContent=t; th.style.border='1px solid #000'; th.style.fontSize='7.5pt'; th.style.textAlign='center'; th.style.padding='3px';
+      tr1.appendChild(th);
+      const td=document.createElement('td'); td.textContent=d.transfer===t?'○':''; td.style.border='1px solid #000'; td.style.textAlign='center'; td.style.padding='8px 3px'; td.style.fontWeight='700';
+      tr2.appendChild(td);
+    });
+    t1.appendChild(tr1); t1.appendChild(tr2);
+    hdrWrap.appendChild(t1); hdr.appendChild(hdrWrap);
+    mk.style.display='none';
+
+    $('#form-paper').hidden=false;
+    $('#form-paper').scrollIntoView({behavior:'smooth'});
+  });
+
+  $('#btn-do-print').addEventListener('click', ()=>window.print());
+  $('#btn-back').addEventListener('click', ()=>{
+    $('#form-paper').hidden=true;
+    $('#student-form').scrollIntoView({behavior:'smooth'});
+  });
+
+  $('#btn-submit').addEventListener('click', async ()=>{
+    const d=collect(); if(!validate(d)) return;
+    $('#btn-submit').disabled=true; $('#btn-submit').textContent='제출 중...';
+    try{
+      const res=await fetch(API_SUBMIT, {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({key, c1:d.c1, c2:d.c2, transfer:d.transfer, exclude:d.exclude, ts:nowISO()})
+      });
+      if(!res.ok) throw new Error('서버 '+res.status);
+      showDone();
+    }catch(e){
+      $('#student-error').textContent='서버 제출 실패: '+e.message+' — "엑셀로 제출"을 이용하세요.';
+      $('#btn-submit').disabled=false; $('#btn-submit').textContent='서버에 제출 (지망·전형만)';
+    }
+  });
+
+  $('#btn-offline').addEventListener('click', ()=>{
+    const d=collect(); if(!validate(d)) return;
+    const header=['학번키','1지망','2지망','전형유형','2단계배제','제출시각'];
+    const row=[key,d.c1,d.c2,d.transfer,d.exclude.join('|'),nowISO()].map(sanitizeCell);
+    const ws=XLSX.utils.aoa_to_sheet([header,row]); ws['!cols']=header.map(()=>({wch:16}));
+    const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'지망');
+    XLSX.writeFile(wb, `지망_${key}.xlsx`);
+    showDone();
+  });
+
+  function showDone(){ $('#student-form').hidden=true; $('#student-done').hidden=false; $('#form-paper').hidden=true; }
+}
+
+// ═══ 관리자 모드 ═══
+function initAdminMode(){
+  $('#admin-tabs').hidden=false; $('#issue-view').hidden=false;
+  $$('#admin-tabs .chip').forEach(b=>{
+    b.addEventListener('click', ()=>{
+      $$('#admin-tabs .chip').forEach(x=>x.classList.remove('is-active'));
+      b.classList.add('is-active');
+      const v=b.dataset.view;
+      $('#issue-view').hidden=(v!=='issue'); $('#export-view').hidden=(v!=='export');
+    });
+  });
+  initIssueTab(); initExportTab();
+}
+
+// ═══ 발급 탭 ═══
+let issuedList=[];
+function initIssueTab(){
+  const dz=$('#drop-zone'), fi=$('#file-input'), log=$('#file-log');
+  ['dragenter','dragover'].forEach(ev=>dz.addEventListener(ev,e=>{e.preventDefault();dz.classList.add('dragging')}));
+  ['dragleave','drop'].forEach(ev=>dz.addEventListener(ev,e=>{e.preventDefault();dz.classList.remove('dragging')}));
+  dz.addEventListener('drop', e=>handleRoster(e.dataTransfer.files[0]));
+  fi.addEventListener('change', e=>handleRoster(e.target.files[0]));
+
+  async function handleRoster(file){
+    if(!file) return; log.innerHTML='';
+    const school=$('#issue-school').value.trim();
+    if(!school){ addLog('✗ 먼저 "중학교명"을 입력하세요.'); return; }
+    try{
+      const buf=await file.arrayBuffer(); const wb=XLSX.read(buf,{type:'array'});
+      const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:''});
+      if(!rows.length){ addLog('✗ 빈 파일'); return; }
+      const keys=Object.keys(rows[0]);
+      const col={
+        grade:keys.find(k=>/학년/.test(k)), classNo:keys.find(k=>/^반$|학급|반번호/.test(k)),
+        studentNo:keys.find(k=>/번호|출석번호/.test(k)), name:keys.find(k=>/성명|이름/.test(k))
+      };
+      if(!col.grade||!col.classNo||!col.studentNo||!col.name){
+        addLog('✗ 필요 컬럼(학년/반/번호/성명) 미발견. 발견: '+keys.join(', ')); return;
+      }
+      issuedList=rows.map(r=>({
+        key:genKey(), school,
+        grade:String(r[col.grade]).trim(), classNo:String(r[col.classNo]).trim(),
+        studentNo:String(r[col.studentNo]).trim(), name:String(r[col.name]).trim()
+      })).filter(x=>x.name);
+      addLog(`✓ ${issuedList.length}명 발급 완료`);
+      renderIssueResult();
+    }catch(e){ addLog('✗ '+e.message); }
+  }
+  function addLog(m){ const d=document.createElement('div'); d.textContent='• '+m; log.appendChild(d); }
+  function renderIssueResult(){
+    $('#issue-result').hidden=false; $('#issue-count').textContent=issuedList.length;
+    const grid=$('#qr-grid'); grid.innerHTML='';
+    const base=location.origin+location.pathname;
+    issuedList.forEach(s=>{
+      const url=`${base}?k=${s.key}`;
+      const c=document.createElement('div'); c.className='qr-card';
+      c.innerHTML=`<div class="who">${esc(s.name)}</div><div class="meta">${esc(s.school)} ${esc(s.grade)}학년 ${esc(s.classNo)}반 ${esc(s.studentNo)}번</div><div class="qr-box"><div></div></div><div class="url">${esc(s.key)}</div>`;
+      grid.appendChild(c);
+      new QRCode(c.querySelector('.qr-box > div'), {text:url,width:150,height:150,correctLevel:QRCode.CorrectLevel.M});
+    });
+  }
+  $('#btn-download-map').addEventListener('click', ()=>{
+    if(!issuedList.length) return;
+    const school=issuedList[0].school;
+    const header=['학번키','중학교','학년','반','번호','성명'];
+    const body=issuedList.map(s=>[s.key,s.school,s.grade,s.classNo,s.studentNo,s.name].map(sanitizeCell));
+    const ws=XLSX.utils.aoa_to_sheet([header,...body]); ws['!cols']=header.map(()=>({wch:16}));
+    const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'매핑표');
+    XLSX.writeFile(wb, `매핑표_${safeFileSeg(school)}_${new Date().toISOString().slice(0,10)}.xlsx`);
+    alert('매핑표 다운로드됨. 학교 내부에서만 보관하세요.');
+  });
+  $('#btn-print-qr').addEventListener('click', ()=>window.print());
+  $('#btn-issue-clear').addEventListener('click', ()=>{
+    if(!confirm('매핑표를 먼저 다운로드했는지 확인했나요? 발급 내역을 모두 지웁니다.')) return;
+    issuedList=[]; $('#qr-grid').innerHTML=''; $('#issue-result').hidden=true;
+    $('#file-log').innerHTML=''; $('#file-input').value='';
+  });
+}
+
+// ═══ 내보내기 탭 ═══
+let serverRows=[], mappingRows=[];
+function initExportTab(){
+  $('#btn-fetch').addEventListener('click', async ()=>{
+    const token=$('#admin-token').value.trim(); const st=$('#fetch-status');
+    if(!token){ st.textContent='✗ 토큰을 입력하세요.'; st.style.color='#b42318'; return; }
+    st.textContent='불러오는 중...'; st.style.color='#1e40af';
+    try{
+      const res=await fetch(API_EXPORT, {headers:{'X-Admin-Token':token}});
+      if(!res.ok) throw new Error('서버 '+res.status);
+      const data=await res.json();
+      serverRows=Array.isArray(data)?data:(data.rows||[]);
+      st.textContent=`✓ ${serverRows.length}건`; st.style.color='#166534';
+      tryMerge();
+    }catch(e){ st.textContent='✗ '+e.message; st.style.color='#b42318'; }
+  });
+  $('#btn-import-json').addEventListener('click', ()=>$('#json-input').click());
+  $('#json-input').addEventListener('change', async e=>{
+    const f=e.target.files[0]; if(!f) return;
+    try{
+      const txt=await f.text();
+      let data;
+      if(/\.csv$/i.test(f.name)){ const wb=XLSX.read(txt,{type:'string'}); data=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]); }
+      else data=JSON.parse(txt);
+      serverRows=(Array.isArray(data)?data:data.rows||[]).map(r=>({
+        key:r.key||r.학번키, c1:r.c1||r['1지망'], c2:r.c2||r['2지망'],
+        transfer:r.transfer||r.전형유형||'', exclude:r.exclude||r['2단계배제']||'',
+        ts:r.ts||r.제출시각||''
+      }));
+      $('#fetch-status').textContent=`✓ 파일 ${serverRows.length}건`; $('#fetch-status').style.color='#166534';
+      tryMerge();
+    }catch(err){ $('#fetch-status').textContent='✗ '+err.message; $('#fetch-status').style.color='#b42318'; }
+  });
+
+  const mdz=$('#map-drop-zone'), mi=$('#map-input'), mlog=$('#map-log');
+  ['dragenter','dragover'].forEach(ev=>mdz.addEventListener(ev,e=>{e.preventDefault();mdz.style.borderColor='#111';mdz.style.background='#eef2ff'}));
+  ['dragleave','drop'].forEach(ev=>mdz.addEventListener(ev,e=>{e.preventDefault();mdz.style.borderColor='#d1d5db';mdz.style.background='#fafbfc'}));
+  mdz.addEventListener('drop', e=>handleMaps(e.dataTransfer.files));
+  mi.addEventListener('change', e=>handleMaps(e.target.files));
+
+  async function handleMaps(files){
+    const arr=Array.from(files).filter(f=>/\.xlsx?$/i.test(f.name));
+    for(const f of arr){
+      try{
+        const buf=await f.arrayBuffer(); const wb=XLSX.read(buf,{type:'array'});
+        const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:''});
+        let added=0;
+        rows.forEach(r=>{
+          const k=r['학번키']||r.key; if(!k) return;
+          mappingRows.push({key:k, school:r['중학교']||'', grade:r['학년']||'',
+            classNo:r['반']||'', studentNo:r['번호']||'', name:r['성명']||''});
+          added++;
+        });
+        addMLog(`✓ ${f.name} — ${added}명`);
+      }catch(e){ addMLog(`✗ ${f.name} — ${e.message}`); }
+    }
+    tryMerge();
+  }
+  function addMLog(m){ const d=document.createElement('div'); d.textContent='• '+m; mlog.appendChild(d); }
+  $('#btn-export-clear').addEventListener('click', ()=>{
+    if(!confirm('초기화할까요?')) return;
+    serverRows=[]; mappingRows=[]; mlog.innerHTML=''; $('#fetch-status').textContent='';
+    $('#merge-summary').hidden=true; $('#merge-preview-wrap').hidden=true;
+    $('#btn-merge-export').disabled=true; $('#admin-token').value=''; mi.value=''; $('#json-input').value='';
+  });
+}
+
+function tryMerge(){
+  if(!serverRows.length || !mappingRows.length){
+    $('#merge-summary').hidden=true; $('#merge-preview-wrap').hidden=true; $('#btn-merge-export').disabled=true; return;
+  }
+  const byKey=new Map(); mappingRows.forEach(m=>byKey.set(m.key,m));
+  const merged=[], orphan=[];
+  serverRows.forEach(r=>{
+    const m=byKey.get(r.key);
+    if(m) merged.push({...m,c1:r.c1,c2:r.c2,transfer:r.transfer||'',exclude:Array.isArray(r.exclude)?r.exclude.join('|'):(r.exclude||''),ts:r.ts});
+    else orphan.push(r);
+  });
+  const respKeys=new Set(serverRows.map(r=>r.key));
+  const notResp=mappingRows.filter(m=>!respKeys.has(m.key));
+
+  $('#merge-summary').hidden=false;
+  $('#merge-summary').innerHTML=`결합 ${merged.length}건 · 미응답 ${notResp.length}명 · 매핑없는 응답 ${orphan.length}건`;
+
+  const tbl=$('#merge-table'); tbl.innerHTML='';
+  const header=['중학교','학년','반','번호','성명','1지망','2지망','전형유형','2단계배제','제출시각','학번키'];
+  const thead=document.createElement('thead'); const thr=document.createElement('tr');
+  header.forEach(h=>{ const th=document.createElement('th'); th.textContent=h; thr.appendChild(th); });
+  thead.appendChild(thr); tbl.appendChild(thead);
+  const tbody=document.createElement('tbody');
+  merged.slice(0,200).forEach(r=>{
+    const tr=document.createElement('tr');
+    [r.school,r.grade,r.classNo,r.studentNo,r.name,r.c1,r.c2,r.transfer,r.exclude,r.ts,r.key].forEach(v=>{
+      const td=document.createElement('td'); td.textContent=v; tr.appendChild(td);
+    });
+    tbody.appendChild(tr);
+  });
+  tbl.appendChild(tbody);
+  $('#merge-preview-wrap').hidden=false;
+  $('#btn-merge-export').disabled=false;
+  $('#btn-merge-export').onclick=()=>{
+    const body=merged.map(r=>[r.school,r.grade,r.classNo,r.studentNo,r.name,r.c1,r.c2,r.transfer,r.exclude,r.ts,r.key].map(sanitizeCell));
+    const wb=XLSX.utils.book_new();
+    const ws1=XLSX.utils.aoa_to_sheet([header,...body]); ws1['!cols']=header.map(()=>({wch:14}));
+    XLSX.utils.book_append_sheet(wb,ws1,'결합결과');
+    if(notResp.length){
+      const h2=['중학교','학년','반','번호','성명','학번키'];
+      const b2=notResp.map(r=>[r.school,r.grade,r.classNo,r.studentNo,r.name,r.key].map(sanitizeCell));
+      XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([h2,...b2]),'미응답');
+    }
+    if(orphan.length){
+      const h3=['학번키','1지망','2지망','전형유형','2단계배제','제출시각'];
+      const b3=orphan.map(r=>[r.key,r.c1,r.c2,r.transfer||'',Array.isArray(r.exclude)?r.exclude.join('|'):(r.exclude||''),r.ts].map(sanitizeCell));
+      XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([h3,...b3]),'매핑없음');
+    }
+    XLSX.writeFile(wb, `입학원서_통합_${new Date().toISOString().slice(0,10)}.xlsx`);
+  };
+}
+</script>
+</body>
+</html>
